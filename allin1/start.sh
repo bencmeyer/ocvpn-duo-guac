@@ -80,16 +80,21 @@ SQLEOF
     if [ -z "$ENTITY_ID" ]; then
         echo "    ERROR: Could not find entity ID for user!"
     else
-        mysql -u root guacamole << SQLEOF
-DELETE FROM guacamole_system_permission 
-  WHERE entity_id = $ENTITY_ID;
-INSERT INTO guacamole_system_permission (entity_id, permission) 
-  VALUES ($ENTITY_ID, 'ADMINISTER');
-SQLEOF
+        # Delete existing permissions
+        DEL_RESULT=$(mysql -u root guacamole -e "DELETE FROM guacamole_system_permission WHERE entity_id = $ENTITY_ID;" 2>&1)
+        echo "    Deleted old permissions: $DEL_RESULT"
+        
+        # Insert ADMINISTER permission
+        INSERT_RESULT=$(mysql -u root guacamole -e "INSERT INTO guacamole_system_permission (entity_id, permission) VALUES ($ENTITY_ID, 'ADMINISTER');" 2>&1)
+        INSERT_RC=$?
+        if [ $INSERT_RC -ne 0 ]; then
+            echo "    ERROR inserting permission: $INSERT_RESULT (RC: $INSERT_RC)"
+        fi
         
         # Verify permissions were set
         PERM_COUNT=$(mysql -u root guacamole -se "SELECT COUNT(*) FROM guacamole_system_permission WHERE entity_id=$ENTITY_ID;" 2>/dev/null)
-        echo "  ✓ Admin permissions configured ($PERM_COUNT permissions set)"
+        PERMS=$(mysql -u root guacamole -se "SELECT GROUP_CONCAT(permission) FROM guacamole_system_permission WHERE entity_id=$ENTITY_ID;" 2>/dev/null)
+        echo "  ✓ Admin permissions configured ($PERM_COUNT permissions set: $PERMS)"
     fi
 else
     echo "  Database already initialized"
