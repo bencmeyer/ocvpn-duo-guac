@@ -48,9 +48,9 @@ SQLEOF
 
     echo "  Creating admin user..."
     # Check if user already exists
-    USER_EXISTS=$(mysql -u root guacamole -e "SELECT COUNT(*) FROM guacamole_user WHERE username='$GUAC_DEFAULT_USER';" 2>/dev/null | tail -1)
+    USER_EXISTS=$(mysql -u root guacamole -se "SELECT COUNT(*) FROM guacamole_user WHERE username='$GUAC_DEFAULT_USER';" 2>/dev/null)
     
-    if [ "$USER_EXISTS" -eq 0 ]; then
+    if [ -z "$USER_EXISTS" ] || [ "$USER_EXISTS" -eq 0 ]; then
         # Generate password hash using Guacamole's hash algorithm (SHA256)
         HASH=$(echo -n "$GUAC_DEFAULT_PASS" | sha256sum | cut -d' ' -f1)
         SALT="E767AFF8D5E0F1D3A9B2C5D7E1F3A5B7"
