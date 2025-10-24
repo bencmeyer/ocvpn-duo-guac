@@ -87,21 +87,28 @@ SQLEOF
     if [ -z "$ENTITY_ID" ]; then
         echo "    ERROR: Could not find entity ID for user!"
     else
-        # Delete existing permissions
-        DEL_RESULT=$(mysql -u root guacamole -e "DELETE FROM guacamole_system_permission WHERE entity_id = $ENTITY_ID;" 2>&1)
-        echo "    Deleted old permissions: $DEL_RESULT"
+        # Delete existing permissions first (clean slate)
+        mysql -u root guacamole -e "DELETE FROM guacamole_system_permission WHERE entity_id = $ENTITY_ID;" 2>/dev/null
         
         # Insert ADMINISTER permission
-        INSERT_RESULT=$(mysql -u root guacamole -e "INSERT INTO guacamole_system_permission (entity_id, permission) VALUES ($ENTITY_ID, 'ADMINISTER');" 2>&1)
+        mysql -u root guacamole -e "INSERT INTO guacamole_system_permission (entity_id, permission) VALUES ($ENTITY_ID, 'ADMINISTER');" 2>/dev/null
         INSERT_RC=$?
-        if [ $INSERT_RC -ne 0 ]; then
-            echo "    ERROR inserting permission: $INSERT_RESULT (RC: $INSERT_RC)"
-        fi
         
-        # Verify permissions were set
-        PERM_COUNT=$(mysql -u root guacamole -se "SELECT COUNT(*) FROM guacamole_system_permission WHERE entity_id=$ENTITY_ID;" 2>/dev/null)
-        PERMS=$(mysql -u root guacamole -se "SELECT GROUP_CONCAT(permission) FROM guacamole_system_permission WHERE entity_id=$ENTITY_ID;" 2>/dev/null)
-        echo "  ✓ Admin permissions configured ($PERM_COUNT permissions set: $PERMS)"
+        if [ $INSERT_RC -ne 0 ]; then
+            echo "    ERROR inserting permission (RC: $INSERT_RC)"
+            echo "    Checking database state..."
+            mysql -u root guacamole -e "DESCRIBE guacamole_system_permission;"
+        else
+            # Verify permissions were set correctly
+            PERM_COUNT=$(mysql -u root guacamole -se "SELECT COUNT(*) FROM guacamole_system_permission WHERE entity_id=$ENTITY_ID;" 2>/dev/null)
+            PERMS=$(mysql -u root guacamole -se "SELECT GROUP_CONCAT(permission) FROM guacamole_system_permission WHERE entity_id=$ENTITY_ID;" 2>/dev/null)
+            
+            if [ "$PERM_COUNT" -gt 0 ]; then
+                echo "  ✓ Admin permissions configured ($PERM_COUNT permission(s): $PERMS)"
+            else
+                echo "  ✗ WARNING: Permission count is 0 - insert may have failed silently"
+            fi
+        fi
         
         # Restart Tomcat/Guacamole to clear permission caches
         echo "  Restarting Guacamole to apply permissions..."
