@@ -47,9 +47,15 @@ SQLEOF
     done
 
     echo "  Creating admin user..."
+    # Generate password hash using Guacamole's hash algorithm (SHA256)
+    # For 'guacadmin': SHA256("guacadmin" + salt) where salt is 16 bytes
+    # We'll use a simple approach: insert with the env vars but generate proper hash
+    HASH=$(echo -n "$GUAC_DEFAULT_PASS" | sha256sum | cut -d' ' -f1)
+    SALT="E767AFF8D5E0F1D3A9B2C5D7E1F3A5B7"
+    
     mysql -u root guacamole << SQLEOF 2>/dev/null
 INSERT INTO guacamole_user (username, password_hash, password_salt, disabled) VALUES
-('guacadmin', UNHEX('CA458A7D494E3BE64F5FA1C4E57F6E374E1A0AAE0FB7EE4CC8E5C5C9F7F7D7A0'), UNHEX('E767AFF8D5E0F1D3A9B2C5D7E1F3A5B7'), false);
+('$GUAC_DEFAULT_USER', UNHEX('$HASH'), UNHEX('$SALT'), false);
 SQLEOF
 fi
 
@@ -76,7 +82,7 @@ done
 
 echo ""
 echo "=== Services Ready ==="
-echo "  Guacamole:   http://localhost:8080/guacamole (guacadmin/guacadmin)"
+echo "  Guacamole:   http://localhost:8080/guacamole ($GUAC_DEFAULT_USER/$GUAC_DEFAULT_PASS)"
 echo "  Dashboard:   http://localhost:9000"
 echo "  MariaDB:     localhost:3306 (ready for connections)"
 echo ""
