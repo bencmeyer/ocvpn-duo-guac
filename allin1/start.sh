@@ -47,16 +47,33 @@ SQLEOF
     /opt/guacamole/bin/initdb.sh --mysql | mysql -u root guacamole
 
     echo "  Creating admin user..."
-    # Generate password hash using Guacamole's hash algorithm (SHA256)
-    HASH=$(echo -n "$GUAC_DEFAULT_PASS" | sha256sum | cut -d' ' -f1)
-    SALT="E767AFF8D5E0F1D3A9B2C5D7E1F3A5B7"
+    # The Guacamole schema doesn't use direct guacamole_user insert
+    # Instead, use the official update script or work through the proper table structure
+    # Check if user exists first
+    USER_EXISTS=$(mysql -u root guacamole -se "SELECT COUNT(*) FROM guacamole_user WHERE user_id = (SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER');" 2>/dev/null)
     
-    # Try to insert admin user
-    RESULT=$(mysql -u root guacamole -e "INSERT INTO guacamole_user (username, password_hash, password_salt, disabled) VALUES ('$GUAC_DEFAULT_USER', UNHEX('$HASH'), UNHEX('$SALT'), 0);" 2>&1)
-    if [ $? -eq 0 ]; then
-        echo "  ✓ Admin user created"
+    if [ -z "$USER_EXISTS" ] || [ "$USER_EXISTS" -eq 0 ]; then
+        # Generate password hash using Guacamole's hash algorithm (SHA256)
+        HASH=$(echo -n "$GUAC_DEFAULT_PASS" | sha256sum | cut -d' ' -f1)
+        SALT="E767AFF8D5E0F1D3A9B2C5D7E1F3A5B7"
+        
+        # Insert user using the proper entity/user relationship
+        mysql -u root guacamole << SQLEOF
+INSERT INTO guacamole_entity (name, type) VALUES ('$GUAC_DEFAULT_USER', 'USER');
+INSERT INTO guacamole_user (entity_id, password_hash, password_salt, disabled) 
+  VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 
+          UNHEX('$HASH'), UNHEX('$SALT'), 0);
+INSERT INTO guacamole_system_permission (entity_id, permission) 
+  VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 'ADMINISTER');
+SQLEOF
+        
+        if [ $? -eq 0 ]; then
+            echo "  ✓ Admin user created with ADMINISTER permission"
+        else
+            echo "  ⚠ Failed to create admin user"
+        fi
     else
-        echo "  ⚠ Admin user result: $RESULT"
+        echo "  ✓ Admin user already exists"
     fi
 else
     echo "  Database already initialized"
