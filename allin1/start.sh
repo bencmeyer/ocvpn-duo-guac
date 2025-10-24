@@ -116,5 +116,11 @@ echo "  Dashboard:   http://localhost:9000"
 echo "  MariaDB:     localhost:3306 (ready for connections)"
 echo ""
 
-# Keep supervisord running as PID 1
-wait $SUPERVISOR_PID
+# Keep supervisord running - check if it's still alive
+if ! ps aux | grep -v grep | grep supervisord >/dev/null 2>&1; then
+    echo "ERROR: supervisord has exited. Restarting..."
+    /usr/bin/supervisord -c /etc/supervisor/supervisord.conf
+fi
+
+# Keep container running by tailing supervisor's main logfile
+tail -f /var/log/supervisor/supervisord.log
