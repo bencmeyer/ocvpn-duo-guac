@@ -19,21 +19,18 @@ RUN apk add --no-cache \
     && pip3 install --no-cache-dir flask
 
 # Create directories
-RUN mkdir -p /etc/supervisor/conf.d /opt/openconnect /var/log/supervisor
+RUN mkdir -p /opt/openconnect /var/log/supervisor
 
-# Copy OpenConnect web UI (we'll build this)
-# For now, we'll use a lightweight web interface approach
-
-# Create OpenConnect connection script
+# Copy OpenConnect connection script
 COPY connect-vpn.sh /opt/openconnect/connect-vpn.sh
 RUN chmod +x /opt/openconnect/connect-vpn.sh
 
-# Create supervisor configuration
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
-# Create simple web UI for OpenConnect control
+# Copy simple web UI for OpenConnect control
 COPY openconnect-web.py /opt/openconnect/web.py
 RUN chmod +x /opt/openconnect/web.py
+
+# Add supervisor config for OpenConnect services (complements the base image's config)
+COPY allin1/supervisord-openconnect.conf /etc/supervisor/conf.d/openconnect-services.conf
 
 # Expose ports
 EXPOSE 8080 9000
@@ -42,5 +39,5 @@ EXPOSE 8080 9000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/guacamole/ || exit 1
 
-# Run supervisor
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Use the base image's entry point which handles supervisor correctly
+# (no need to override CMD - base image handles it)
