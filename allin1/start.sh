@@ -63,18 +63,24 @@ INSERT INTO guacamole_entity (name, type) VALUES ('$GUAC_DEFAULT_USER', 'USER');
 INSERT INTO guacamole_user (entity_id, password_hash, password_salt, disabled) 
   VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 
           UNHEX('$HASH'), UNHEX('$SALT'), 0);
-INSERT INTO guacamole_system_permission (entity_id, permission) 
-  VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 'ADMINISTER');
 SQLEOF
         
         if [ $? -eq 0 ]; then
-            echo "  ✓ Admin user created with ADMINISTER permission"
+            echo "  ✓ Admin user created"
         else
             echo "  ⚠ Failed to create admin user"
         fi
     else
         echo "  ✓ Admin user already exists"
     fi
+    
+    # Always ensure admin permissions are set (in case user was created before)
+    mysql -u root guacamole << SQLEOF
+DELETE FROM guacamole_system_permission 
+  WHERE entity_id = (SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER');
+INSERT INTO guacamole_system_permission (entity_id, permission) 
+  VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 'ADMINISTER');
+SQLEOF
 else
     echo "  Database already initialized"
 fi
