@@ -6,6 +6,7 @@ FROM jasonbean/guacamole:latest
 # Install OpenConnect and dependencies
 RUN apk add --no-cache \
     openconnect \
+    xmlsec \
     supervisor \
     curl \
     expect \

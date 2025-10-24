@@ -46,17 +46,17 @@ fi
 
 # Create an expect script to handle interactive prompts
 EXPECT_SCRIPT="/tmp/vpn_expect_script.exp"
-cat > "$EXPECT_SCRIPT" <<'EXPECT_EOF'
+cat > "$EXPECT_SCRIPT" <<EXPECT_EOF
 #!/usr/bin/expect -f
 
 set timeout -1
-set pass $::env(VPN_PASS)
-set user $::env(VPN_USER)
-set server $::env(VPN_SERVER)
-set authgroup $::env(VPN_AUTHGROUP)
-set duo_method $::env(DUO_METHOD)
+set pass "$VPN_PASS"
+set user "$VPN_USER"
+set server "$VPN_SERVER"
+set authgroup "$VPN_AUTHGROUP"
+set duo_method "$DUO_METHOD"
 
-spawn openconnect --user $user --authgroup $authgroup $server
+spawn openconnect --user \$user --authgroup \$authgroup \$server
 
 # Counter to track which password prompt we're on
 set prompt_count 0
@@ -64,10 +64,10 @@ set prompt_count 0
 expect {
     "Password:" {
         incr prompt_count
-        if {$prompt_count == 1} {
-            send -- "$pass\r"
+        if {\$prompt_count == 1} {
+            send -- "\$pass\r"
         } else {
-            send -- "$duo_method\r"
+            send -- "\$duo_method\r"
         }
         exp_continue
     }
