@@ -47,31 +47,27 @@ SQLEOF
     /opt/guacamole/bin/initdb.sh --mysql | mysql -u root guacamole
 
     echo "  Creating admin user..."
-    # The Guacamole schema doesn't use direct guacamole_user insert
-    # Instead, use the official update script or work through the proper table structure
+    # Generate password hash using Guacamole's hash algorithm (SHA256)
+    HASH=$(echo -n "$GUAC_DEFAULT_PASS" | sha256sum | cut -d' ' -f1)
+    SALT="E767AFF8D5E0F1D3A9B2C5D7E1F3A5B7"
+    
     # Check if user exists first
     USER_EXISTS=$(mysql -u root guacamole -se "SELECT COUNT(*) FROM guacamole_user WHERE user_id = (SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER');" 2>/dev/null)
     
     if [ -z "$USER_EXISTS" ] || [ "$USER_EXISTS" -eq 0 ]; then
-        # Generate password hash using Guacamole's hash algorithm (SHA256)
-        HASH=$(echo -n "$GUAC_DEFAULT_PASS" | sha256sum | cut -d' ' -f1)
-        SALT="E767AFF8D5E0F1D3A9B2C5D7E1F3A5B7"
-        
-        # Insert user using the proper entity/user relationship
+        # Create new user
         mysql -u root guacamole << SQLEOF
 INSERT INTO guacamole_entity (name, type) VALUES ('$GUAC_DEFAULT_USER', 'USER');
 INSERT INTO guacamole_user (entity_id, password_hash, password_salt, disabled) 
   VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 
           UNHEX('$HASH'), UNHEX('$SALT'), 0);
 SQLEOF
-        
-        if [ $? -eq 0 ]; then
-            echo "  ✓ Admin user created"
-        else
-            echo "  ⚠ Failed to create admin user"
-        fi
+        echo "  ✓ Admin user created"
     else
-        echo "  ✓ Admin user already exists"
+        # User already exists - update password
+        ENTITY_ID=$(mysql -u root guacamole -se "SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER';" 2>/dev/null)
+        mysql -u root guacamole -e "UPDATE guacamole_user SET password_hash=UNHEX('$HASH'), password_salt=UNHEX('$SALT') WHERE entity_id=$ENTITY_ID;" 2>/dev/null
+        echo "  ✓ Admin user password updated"
     fi
     
     # Always ensure admin permissions are set - grant ALL system permissions
