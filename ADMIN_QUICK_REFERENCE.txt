@@ -1,0 +1,63 @@
+# Admin Permission Issue - Quick Start Guide
+
+## Problem
+You can login as `guacadmin` but don't have admin access (no Administration menu).
+
+## Solution - 3 Steps
+
+### Step 1: Diagnose
+```bash
+# See what's happening
+./test-admin-permissions.sh
+```
+
+### Step 2: Fix
+```bash
+# Apply the fix
+./fix-admin-permissions.sh
+```
+
+### Step 3: Verify
+1. Clear browser cache (Ctrl+Shift+Del)
+2. Log out from Guacamole
+3. Log back in as guacadmin/guacadmin
+4. Look for "Administration" menu at top
+
+## If Still Not Working
+
+Read the full guides (in order):
+1. `ADMIN_ISSUE_SUMMARY.md` - Quick overview
+2. `ADMIN_FIX_GUIDE.md` - Detailed step-by-step
+3. `ADMIN_PERMISSIONS_TROUBLESHOOTING.md` - Deep dive
+
+## Quick Manual Fix
+
+```bash
+# 1. Get user ID
+ENTITY_ID=$(mysql -u root guacamole -se \
+    "SELECT entity_id FROM guacamole_entity WHERE name='guacadmin' AND type='USER';")
+
+# 2. Grant permission
+mysql -u root guacamole -e \
+    "INSERT INTO guacamole_system_permission (entity_id, permission) \
+     VALUES ($ENTITY_ID, 'ADMINISTER');"
+
+# 3. Restart Guacamole
+supervisorctl -c /etc/supervisor/supervisord.conf restart tomcat
+
+# 4. Wait and test
+sleep 5
+# Clear cache, log out, log back in
+```
+
+## What's in the Repo
+
+| File | Purpose |
+|------|---------|
+| `test-admin-permissions.sh` | 🔍 Diagnostic tool |
+| `fix-admin-permissions.sh` | 🔧 Quick fix script |
+| `ADMIN_ISSUE_SUMMARY.md` | 📋 Overview |
+| `ADMIN_FIX_GUIDE.md` | 📖 Detailed guide |
+| `ADMIN_PERMISSIONS_TROUBLESHOOTING.md` | 🔬 Technical deep dive |
+| `allin1/start.sh` | ✅ Updated startup script |
+
