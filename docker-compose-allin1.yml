@@ -34,8 +34,8 @@ services:
       DEBUG: "${DEBUG:-false}"
       
       # Optional - Guacamole Admin Credentials
-      GUACAMOLE_ADMIN_USER: "${GUACAMOLE_ADMIN_USER:-admin}"
-      GUACAMOLE_ADMIN_PASS: "${GUACAMOLE_ADMIN_PASS:-admin}"
+      GUAC_DEFAULT_USER: "${GUAC_DEFAULT_USER:-guacadmin}"
+      GUAC_DEFAULT_PASS: "${GUAC_DEFAULT_PASS:-guacadmin}"
     
     # Auto-restart on failure
     restart: unless-stopped
@@ -57,5 +57,5 @@ services:
 # DUO_METHOD=push
 # DNS_SERVERS=130.126.2.131
 # DEBUG=false
-# GUACAMOLE_ADMIN_USER=admin
-# GUACAMOLE_ADMIN_PASS=admin
+# GUAC_DEFAULT_USER=guacadmin
+# GUAC_DEFAULT_PASS=guacadmin

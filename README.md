@@ -40,6 +40,8 @@ docker run -d --name=ocvpn-guac --privileged \
   -e VPN_PASS=your-password \
   -e VPN_SERVER=vpn.illinois.edu \
   -e DUO_METHOD=push \
+  -e GUAC_DEFAULT_USER=admin \
+  -e GUAC_DEFAULT_PASS=securepassword \
   bencmeyer/ocvpn-duo-guac:latest
 ```
 
@@ -53,6 +55,8 @@ docker run -d --name=ocvpn-guac --privileged \
 | `VPN_AUTHGROUP` | Auth group on VPN | OpenConnect1 (Split) | Corp |
 | `DUO_METHOD` | 2FA method | push | phone, sms |
 | `DNS_SERVERS` | DNS servers (space-separated) | 130.126.2.131 | 8.8.8.8 1.1.1.1 |
+| `GUAC_DEFAULT_USER` | Guacamole admin username | guacadmin | admin |
+| `GUAC_DEFAULT_PASS` | Guacamole admin password | guacadmin | MySecurePass123 |
 | `DEBUG` | Debug logging | false | true |
 
 ### DNS Options (Examples)
@@ -67,10 +71,10 @@ OpenDNS:       208.67.222.123
 
 ## Ports & Accessing Services
 
-| Port | Service | URL |
-|------|---------|-----|
-| 8080 | Guacamole Web UI | http://localhost:8080 (admin/admin) |
-| 9000 | OpenConnect Monitor | http://localhost:9000 |
+| Port | Service | URL | Credentials |
+|------|---------|-----|-------------|
+| 8080 | Guacamole Web UI | http://localhost:8080/guacamole | See `GUAC_DEFAULT_USER`/`GUAC_DEFAULT_PASS` (default: guacadmin/guacadmin) |
+| 9000 | OpenConnect Monitor | http://localhost:9000 | (no auth) |
 
 ## Troubleshooting
 
