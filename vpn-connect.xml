@@ -12,8 +12,8 @@
     <Cap>SYS_ADMIN</Cap>
     <Cap>NET_RAW</Cap>
   </CapAdd>
-  <Support>https://github.com/your-repo/issues</Support>
-  <Project>https://www.infradead.org/openconnect/</Project>
+  <Support>https://github.com/bencmeyer/ocvpn-duo-guac/issues</Support>
+  <Project>https://github.com/bencmeyer/ocvpn-duo-guac</Project>
   <Overview>OpenConnect VPN + Guacamole All-in-One Gateway - VPN client with RDP/SSH/VNC proxy</Overview>
   <Category>Network</Category>
   <WebUI>http://[IP]:[PORT:8080]</WebUI>
