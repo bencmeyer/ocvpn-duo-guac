@@ -75,26 +75,38 @@ SQLEOF
     fi
     
     # Always ensure admin permissions are set - grant ALL system permissions
-    mysql -u root guacamole << SQLEOF
-DELETE FROM guacamole_system_permission 
-  WHERE entity_id = (SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER');
-INSERT INTO guacamole_system_permission (entity_id, permission) 
-  VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 'ADMINISTER');
-INSERT INTO guacamole_system_permission (entity_id, permission) 
-  VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 'CREATE_CONNECTION');
-INSERT INTO guacamole_system_permission (entity_id, permission) 
-  VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 'CREATE_CONNECTION_GROUP');
-INSERT INTO guacamole_system_permission (entity_id, permission) 
-  VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 'CREATE_SHARING_PROFILE');
-INSERT INTO guacamole_system_permission (entity_id, permission) 
-  VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 'CREATE_USER');
-INSERT INTO guacamole_system_permission (entity_id, permission) 
-  VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 'CREATE_USER_GROUP');
-INSERT INTO guacamole_system_permission (entity_id, permission) 
-  VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 'MANAGE_SYSTEM');
-SQLEOF
+    echo "  Setting up admin permissions..."
     
-    echo "  ✓ Admin permissions configured"
+    # Get the user entity ID
+    ENTITY_ID=$(mysql -u root guacamole -se "SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER';" 2>/dev/null)
+    echo "    Entity ID for $GUAC_DEFAULT_USER: $ENTITY_ID"
+    
+    if [ -z "$ENTITY_ID" ]; then
+        echo "    ERROR: Could not find entity ID for user!"
+    else
+        mysql -u root guacamole << SQLEOF
+DELETE FROM guacamole_system_permission 
+  WHERE entity_id = $ENTITY_ID;
+INSERT INTO guacamole_system_permission (entity_id, permission) 
+  VALUES ($ENTITY_ID, 'ADMINISTER');
+INSERT INTO guacamole_system_permission (entity_id, permission) 
+  VALUES ($ENTITY_ID, 'CREATE_CONNECTION');
+INSERT INTO guacamole_system_permission (entity_id, permission) 
+  VALUES ($ENTITY_ID, 'CREATE_CONNECTION_GROUP');
+INSERT INTO guacamole_system_permission (entity_id, permission) 
+  VALUES ($ENTITY_ID, 'CREATE_SHARING_PROFILE');
+INSERT INTO guacamole_system_permission (entity_id, permission) 
+  VALUES ($ENTITY_ID, 'CREATE_USER');
+INSERT INTO guacamole_system_permission (entity_id, permission) 
+  VALUES ($ENTITY_ID, 'CREATE_USER_GROUP');
+INSERT INTO guacamole_system_permission (entity_id, permission) 
+  VALUES ($ENTITY_ID, 'MANAGE_SYSTEM');
+SQLEOF
+        
+        # Verify permissions were set
+        PERM_COUNT=$(mysql -u root guacamole -se "SELECT COUNT(*) FROM guacamole_system_permission WHERE entity_id=$ENTITY_ID;" 2>/dev/null)
+        echo "  ✓ Admin permissions configured ($PERM_COUNT permissions set)"
+    fi
 else
     echo "  Database already initialized"
 fi
