@@ -16,8 +16,8 @@
   <Project>https://github.com/bencmeyer/ocvpn-duo-guac</Project>
   <Overview>OpenConnect VPN + Guacamole All-in-One Gateway - VPN client with RDP/SSH/VNC proxy</Overview>
   <Category>Network</Category>
-  <WebUI>http://[IP]:[PORT:8080]</WebUI>
-  <TemplateURL/>
+  <WebUI>http://[IP]:[PORT:9000]</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/bencmeyer/ocvpn-duo-guac/main/vpn-connect.xml</TemplateURL>
   <Icon>https://www.infradead.org/openconnect/logo.png</Icon>
   <ExtraParams/>
   <PostArgs/>

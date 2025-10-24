@@ -215,8 +215,8 @@ def dashboard():
                         Guacamole is running on port 8080
                     </div>
                     <p>
-                        <a href="http://localhost:8080/guacamole/" target="_blank">
-                            Open Guacamole Dashboard →
+                        <a id="guac-link" href="#" target="_blank">
+                            Open Guacamole →
                         </a>
                     </p>
                 </div>
@@ -329,10 +329,18 @@ def dashboard():
                     });
             }
 
+            function setGuacamoleLink() {
+                // Set Guacamole link to use the current host instead of localhost
+                const host = window.location.hostname;
+                const guacLink = document.getElementById('guac-link');
+                guacLink.href = `http://${host}:8080/guacamole/`;
+            }
+
             // Update status every 5 seconds
             updateStatus();
             refreshLogs();
             loadSettings();
+            setGuacamoleLink();
             setInterval(updateStatus, 5000);
         </script>
     </body>
