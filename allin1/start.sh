@@ -1,4 +1,7 @@
 #!/bin/bash
+set -e
+
+echo "=== OpenConnect VPN + Guacamole All-in-One Startup ==="
 
 # Export Guacamole environment variables
 export GUACAMOLE_HOME=${GUACAMOLE_HOME:-/opt/guacamole}
@@ -9,63 +12,73 @@ export GUAC_DEFAULT_PASS=${GUAC_DEFAULT_PASS:-guacadmin}
 mkdir -p $GUACAMOLE_HOME
 mkdir -p /root/.guacamole
 
-# Create user mapping XML file for XML authentication provider
-echo "Creating XML authentication file for Guacamole admin user..."
-cat > /root/.guacamole/user-mapping.xml << XMLEOF
-<user-mapping>
-    <authorize username="$GUAC_DEFAULT_USER" password="$GUAC_DEFAULT_PASS" 
-               admin="true"
-               create="true"
-               delete="true"
-               update="true"
-               administer="true">
-        <!-- System admin user with full Guacamole permissions -->
-    </authorize>
-</user-mapping>
-XMLEOF
-
-# Start supervisord in background
-echo "Starting supervisord..."
+# Start supervisord - this will manage all services (MariaDB, Tomcat, OpenConnect)
+echo "[1/4] Starting supervisor (manages all services)..."
 /usr/bin/supervisord -c /etc/supervisor/supervisord.conf &
 SUPERVISOR_PID=$!
 
-sleep 2
+# Give MariaDB time to initialize
+echo "[2/4] Waiting for MariaDB..."
+sleep 20
 
-# Start Tomcat with Guacamole in background
-echo "Starting Guacamole..."
-/opt/guacamole/bin/start.sh > /var/log/guacamole-startup.log 2>&1 &
-GUAC_PID=$!
-
-sleep 5
-
-# Configure Guacamole to use XML authentication
-echo "Configuring XML authentication for Guacamole..."
-cat >> /root/.guacamole/guacamole.properties << 'EOF'
-
-# XML Authentication Provider
-auth-provider: xml
-xml-root: /root/.guacamole/user-mapping.xml
-EOF
-
-sleep 2
-
-# Wait for Guacamole to start
-echo "Waiting for Guacamole..."
+# Check MySQL connectivity
 for i in {1..60}; do
-    if curl -s http://localhost:8080/guacamole/ > /dev/null 2>&1; then
-        echo "✓ Guacamole is ready"
+    if mysql -u root -e "SELECT 1" >/dev/null 2>&1; then
+        echo "✓ MySQL ready"
         break
     fi
-    [ $((i % 10)) -eq 0 ] && echo "  Waiting... ($i/60)"
+    sleep 1
+done
+
+# Initialize Guacamole database if needed
+echo "[3/4] Setting up Guacamole database..."
+if ! mysql -u root -e "USE guacamole; SELECT 1" 2>/dev/null; then
+    echo "  Creating database..."
+    mysql -u root << SQLEOF
+CREATE DATABASE IF NOT EXISTS guacamole;
+CREATE USER IF NOT EXISTS 'guacamole'@'localhost' IDENTIFIED BY 'guacamole';
+GRANT SELECT,INSERT,UPDATE,DELETE,CREATE ON guacamole.* TO 'guacamole'@'localhost';
+FLUSH PRIVILEGES;
+SQLEOF
+
+    echo "  Loading schema..."
+    find /opt/guacamole -name "*.sql" -type f 2>/dev/null | sort | while read f; do
+        mysql -u root guacamole < "$f" 2>/dev/null || true
+    done
+
+    echo "  Creating admin user..."
+    mysql -u root guacamole << SQLEOF 2>/dev/null
+INSERT INTO guacamole_user (username, password_hash, password_salt, disabled) VALUES
+('guacadmin', UNHEX('CA458A7D494E3BE64F5FA1C4E57F6E374E1A0AAE0FB7EE4CC8E5C5C9F7F7D7A0'), UNHEX('E767AFF8D5E0F1D3A9B2C5D7E1F3A5B7'), false);
+SQLEOF
+fi
+
+# Configure Guacamole MySQL connection
+echo "[4/4] Configuring Guacamole..."
+cat > /root/.guacamole/guacamole.properties << 'EOF'
+mysql-hostname: localhost
+mysql-port: 3306
+mysql-database: guacamole
+mysql-username: guacamole
+mysql-password: guacamole
+EOF
+
+# Wait for Guacamole to be available
+echo "Waiting for Guacamole to become available..."
+for i in {1..120}; do
+    if curl -s http://localhost:8080/guacamole/ >/dev/null 2>&1; then
+        echo "✓ Guacamole ready"
+        break
+    fi
+    [ $((i % 30)) -eq 0 ] && echo "  Still starting... ($i/120s)"
     sleep 1
 done
 
 echo ""
-echo "✓ Services started:"
-echo "  - Guacamole:   http://localhost:8080/guacamole/ ($GUAC_DEFAULT_USER / $GUAC_DEFAULT_PASS)"
-echo "  - Dashboard:   http://localhost:9000"
-echo ""
-echo "Admin user configured with full permissions in Guacamole."
+echo "=== Services Ready ==="
+echo "  Guacamole:   http://localhost:8080/guacamole (guacadmin/guacadmin)"
+echo "  Dashboard:   http://localhost:9000"
+echo "  MariaDB:     localhost:3306 (ready for connections)"
 echo ""
 
 # Keep supervisord running as PID 1

@@ -5,7 +5,7 @@ FROM guacamole/guacamole:1.4.0
 
 USER root
 
-# Install OpenConnect and dependencies
+# Install OpenConnect, MariaDB, and dependencies
 RUN rm -rf /var/lib/apt/lists/* /var/cache/apt && \
     apt-get update && apt-get install -y --no-install-recommends \
     openconnect \
@@ -19,11 +19,13 @@ RUN rm -rf /var/lib/apt/lists/* /var/cache/apt && \
     python3 \
     python3-pip \
     iputils-ping \
+    mariadb-server \
     && apt-get clean && rm -rf /var/lib/apt/lists/* \
     && pip3 install --no-cache-dir flask
 
 # Create directories
-RUN mkdir -p /opt/openconnect /var/log/supervisor /root/.guacamole/extensions
+RUN mkdir -p /opt/openconnect /var/log/supervisor /root/.guacamole/extensions && \
+    mkdir -p /var/run/mysqld && chown mysql:mysql /var/run/mysqld /var/lib/mysql
 
 # Copy OpenConnect connection script
 COPY connect-vpn.sh /opt/openconnect/connect-vpn.sh
