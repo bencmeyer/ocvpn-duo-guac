@@ -57,6 +57,21 @@ def get_dns_status():
     except:
         return []
 
+def check_guacamole_status():
+    """Check if Guacamole is actually responding and on which port"""
+    guac_port = int(os.environ.get('GUACAMOLE_PORT', '8080'))
+    ports_to_check = [guac_port, 8080, 9000]  # Check specified port, default, and fallback
+    
+    for port in ports_to_check:
+        try:
+            import urllib.request
+            urllib.request.urlopen(f'http://localhost:{port}/guacamole/', timeout=2)
+            return {'status': 'running', 'available': True, 'port': port}
+        except:
+            pass
+    
+    return {'status': 'not responding', 'available': False, 'port': guac_port}
+
 def get_vpn_settings():
     """Get VPN configuration from environment"""
     return {
@@ -136,14 +151,23 @@ def api_index():
 
 @app.route('/api/status')
 def api_status():
-    """Get current VPN status"""
-    status = get_vpn_status()
+    """Get current VPN and Guacamole status"""
+    vpn_status = get_vpn_status()
     dns = get_dns_status()
+    guac_status = check_guacamole_status()
+    
     return jsonify({
-        'connected': status['status'] == 'connected',
-        'ip': status.get('ip', 'N/A'),
-        'dns': dns,
-        'timestamp': status.get('timestamp', 0)
+        'vpn': {
+            'connected': vpn_status['status'] == 'connected',
+            'ip': vpn_status.get('ip', 'N/A'),
+            'dns': dns,
+            'timestamp': vpn_status.get('timestamp', 0)
+        },
+        'guacamole': {
+            'status': guac_status['status'],
+            'available': guac_status['available'],
+            'port': guac_status.get('port', 8080)
+        }
     })
 
 @app.route('/api/logs')
@@ -261,9 +285,8 @@ def dashboard():
                 <!-- Guacamole Panel -->
                 <div class="panel">
                     <h2>Guacamole</h2>
-                    <div class="info">
-                        Guacamole is running on port 8080
-                    </div>
+                    <div id="guac-status" class="status disconnected">Status: Checking...</div>
+                    <div id="guac-info" class="info"></div>
                     <p>
                         <a id="guac-link" href="#" target="_blank">
                             Open Guacamole →
@@ -314,16 +337,34 @@ def dashboard():
                         const statusEl = document.getElementById('vpn-status');
                         const infoEl = document.getElementById('vpn-info');
                         
-                        if (data.connected) {
+                        if (data.vpn.connected) {
                             statusEl.textContent = '✅ Status: Connected';
                             statusEl.className = 'status connected';
-                            infoEl.innerHTML = `<strong>VPN IP:</strong> ${data.ip}<br><strong>DNS:</strong> ${data.dns.join(', ')}`;
+                            infoEl.innerHTML = `<strong>VPN IP:</strong> ${data.vpn.ip}<br><strong>DNS:</strong> ${data.vpn.dns.join(', ')}`;
                         } else {
                             statusEl.textContent = '❌ Status: Disconnected';
                             statusEl.className = 'status disconnected';
                             infoEl.innerHTML = 'VPN is not connected';
                         }
+                        
+                        // Update Guacamole status
+                        updateGuacamoleStatus(data.guacamole);
                     });
+            }
+            
+            function updateGuacamoleStatus(guacStatus) {
+                const statusEl = document.getElementById('guac-status');
+                const infoEl = document.getElementById('guac-info');
+                
+                if (guacStatus.available) {
+                    statusEl.textContent = `✅ Status: Running (Port ${guacStatus.port})`;
+                    statusEl.className = 'status connected';
+                    infoEl.innerHTML = `<strong>Status:</strong> Running<br><strong>Port:</strong> ${guacStatus.port}`;
+                } else {
+                    statusEl.textContent = `❌ Status: ${guacStatus.status} (Port ${guacStatus.port})`;
+                    statusEl.className = 'status disconnected';
+                    infoEl.innerHTML = `<strong>Status:</strong> ${guacStatus.status}<br><strong>Port:</strong> ${guacStatus.port}`;
+                }
             }
 
             function connect() {
