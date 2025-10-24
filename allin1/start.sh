@@ -123,6 +123,11 @@ mysql-username: guacamole
 mysql-password: guacamole
 EOF
 
+# Now that database is ready, start Tomcat/Guacamole
+echo "Starting Guacamole (Tomcat)..."
+supervisorctl -c /etc/supervisor/supervisord.conf start tomcat
+sleep 5
+
 # Wait for Guacamole to be available
 echo "Waiting for Guacamole to become available..."
 GUAC_READY=0
