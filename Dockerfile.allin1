@@ -1,12 +1,11 @@
 # OpenConnect + Guacamole all-in-one for Unraid
-# Uses jasonbean/guacamole which is Alpine-based and more reliable
+# Uses jasonbean/guacamole which is Alpine-based
 
 FROM jasonbean/guacamole:latest
 
 # Install OpenConnect and dependencies
+# Skip xmlsec - let openconnect use its bundled dependencies
 RUN apk add --no-cache \
-    openconnect \
-    xmlsec \
     supervisor \
     curl \
     expect \
@@ -16,8 +15,11 @@ RUN apk add --no-cache \
     ca-certificates \
     nano \
     python3 \
-    py3-pip \
-    && pip3 install --no-cache-dir flask
+    py3-pip && \
+    pip3 install --no-cache-dir flask && \
+    # Install openconnect separately and install its dependencies
+    apk add --no-cache openconnect --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community/ || \
+    apk add --no-cache openconnect
 
 # Create directories
 RUN mkdir -p /opt/openconnect /var/log/supervisor
