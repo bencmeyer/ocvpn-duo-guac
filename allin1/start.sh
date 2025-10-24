@@ -24,6 +24,9 @@ cat >> /root/.guacamole/guacamole.properties << 'EOF'
 # XML Authentication Extension
 auth-provider: xml
 xml-root: /root/.guacamole/user-mapping.xml
+
+# System admin group for XML authentication
+system-admin-group: system-admins
 EOF
 
 # Give Tomcat a moment to reload
