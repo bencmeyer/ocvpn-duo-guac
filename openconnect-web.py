@@ -3,7 +3,7 @@
 OpenConnect Web UI - Simple web interface to control VPN connection
 """
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, redirect
 import subprocess
 import os
 import json
@@ -48,6 +48,16 @@ def get_dns_status():
     except:
         return []
 
+def get_vpn_settings():
+    """Get VPN configuration from environment"""
+    return {
+        'user': os.environ.get('VPN_USER', 'N/A'),
+        'server': os.environ.get('VPN_SERVER', 'vpn.illinois.edu'),
+        'authgroup': os.environ.get('VPN_AUTHGROUP', 'OpenConnect1 (Split)'),
+        'duo_method': os.environ.get('DUO_METHOD', 'push'),
+        'dns_servers': os.environ.get('DNS_SERVERS', '130.126.2.131'),
+    }
+
 def get_logs(lines=50):
     """Get recent logs"""
     try:
@@ -59,7 +69,12 @@ def get_logs(lines=50):
 
 @app.route('/')
 def index():
-    """Main dashboard"""
+    """Redirect to dashboard"""
+    return redirect('/dashboard')
+
+@app.route('/api/')
+def api_index():
+    """Main API endpoint - returns status as JSON"""
     status = get_vpn_status()
     dns = get_dns_status()
     return jsonify({
@@ -86,6 +101,12 @@ def api_logs():
     """Get recent logs"""
     lines = request.args.get('lines', 50, type=int)
     return jsonify({'logs': get_logs(lines)})
+
+@app.route('/api/settings')
+def api_settings():
+    """Get VPN settings"""
+    settings = get_vpn_settings()
+    return jsonify(settings)
 
 @app.route('/api/connect', methods=['POST'])
 def api_connect():
@@ -132,9 +153,10 @@ def dashboard():
         <title>OpenConnect VPN + Guacamole</title>
         <style>
             body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-            .container { max-width: 1200px; margin: 0 auto; }
-            .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+            .container { max-width: 1400px; margin: 0 auto; }
+            .dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
             .panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .panel-full { grid-column: 1 / -1; }
             .status { font-size: 18px; font-weight: bold; padding: 10px; border-radius: 4px; margin: 10px 0; }
             .connected { background: #d4edda; color: #155724; }
             .disconnected { background: #f8d7da; color: #721c24; }
@@ -147,6 +169,11 @@ def dashboard():
             .btn-reconnect:hover { background: #0056b3; }
             .info { background: #e7f3ff; padding: 10px; margin: 10px 0; border-left: 4px solid #007bff; }
             .logs { background: #f8f9fa; padding: 10px; border: 1px solid #dee2e6; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; }
+            .settings { background: #fff3cd; padding: 10px; margin: 10px 0; border-left: 4px solid #ffc107; font-size: 13px; }
+            .setting-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #e0e0e0; }
+            .setting-row:last-child { border-bottom: none; }
+            .setting-key { font-weight: bold; color: #555; }
+            .setting-value { color: #333; word-break: break-all; }
             h2 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
             a { color: #007bff; text-decoration: none; }
             a:hover { text-decoration: underline; }
@@ -181,10 +208,36 @@ def dashboard():
                         </a>
                     </p>
                 </div>
+
+                <div class="panel">
+                    <h2>VPN Settings</h2>
+                    <div id="vpn-settings" class="settings">
+                        <div class="setting-row">
+                            <span class="setting-key">Username:</span>
+                            <span class="setting-value" id="setting-user">Loading...</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-key">Server:</span>
+                            <span class="setting-value" id="setting-server">Loading...</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-key">Auth Group:</span>
+                            <span class="setting-value" id="setting-authgroup">Loading...</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-key">Duo Method:</span>
+                            <span class="setting-value" id="setting-duo">Loading...</span>
+                        </div>
+                        <div class="setting-row">
+                            <span class="setting-key">DNS Servers:</span>
+                            <span class="setting-value" id="setting-dns">Loading...</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Logs Panel -->
-            <div class="panel" style="margin-top: 20px;">
+            <div class="panel panel-full" style="margin-top: 20px;">
                 <h2>Recent Logs</h2>
                 <div id="logs" class="logs">Loading logs...</div>
                 <button onclick="refreshLogs()" style="margin-top: 10px;">Refresh Logs</button>
@@ -248,9 +301,26 @@ def dashboard():
                     });
             }
 
+            function loadSettings() {
+                fetch('/api/settings')
+                    .then(r => r.json())
+                    .then(data => {
+                        document.getElementById('setting-user').textContent = data.user || 'N/A';
+                        document.getElementById('setting-server').textContent = data.server || 'N/A';
+                        document.getElementById('setting-authgroup').textContent = data.authgroup || 'N/A';
+                        document.getElementById('setting-duo').textContent = data.duo_method || 'N/A';
+                        document.getElementById('setting-dns').textContent = data.dns_servers || 'N/A';
+                    })
+                    .catch(err => {
+                        console.error('Failed to load settings:', err);
+                        document.getElementById('setting-user').textContent = 'Error loading settings';
+                    });
+            }
+
             // Update status every 5 seconds
             updateStatus();
             refreshLogs();
+            loadSettings();
             setInterval(updateStatus, 5000);
         </script>
     </body>
