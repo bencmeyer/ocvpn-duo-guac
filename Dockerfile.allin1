@@ -57,10 +57,13 @@ RUN mkdir -p /etc/supervisor/conf.d && \
 
 # Configure default Guacamole credentials via environment variable (Debian image uses env vars)
 # GUACD_HOSTNAME must be set for the Debian-based Guacamole image
+# GUACAMOLE_AUTH_PROVIDER selects the authentication backend
 ENV GUACAMOLE_HOME=/opt/guacamole \
     GUAC_DEFAULT_USER=guacadmin \
     GUAC_DEFAULT_PASS=guacadmin \
-    GUACD_HOSTNAME=localhost
+    GUACD_HOSTNAME=localhost \
+    GUACAMOLE_AUTH_PROVIDER=xml \
+    GUACAMOLE_XML_ROOT=/root/.guacamole/user-mapping.xml
 
 # Copy custom entrypoint script that starts both guacamole and supervisord
 COPY allin1/start.sh /opt/start.sh
