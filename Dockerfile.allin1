@@ -1,0 +1,64 @@
+# Multi-stage build for OpenConnect + Guacamole all-in-one
+
+FROM debian:bullseye-slim as builder
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    curl \
+    pkg-config \
+    libssl-dev \
+    libxml2-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build OpenConnect from source with web UI support
+RUN git clone https://github.com/openconnect/openconnect.git /tmp/openconnect && \
+    cd /tmp/openconnect && \
+    ./configure --prefix=/usr/local && \
+    make && \
+    make install && \
+    rm -rf /tmp/openconnect
+
+# Final image - Start from guacamole
+FROM guacamole/guacamole:latest
+
+# Install OpenConnect and dependencies
+RUN apt-get update && apt-get install -y \
+    openconnect \
+    supervisor \
+    curl \
+    expect \
+    dnsutils \
+    iputils-ping \
+    iproute2 \
+    ca-certificates \
+    nano \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create directories
+RUN mkdir -p /etc/supervisor/conf.d /opt/openconnect /var/log/supervisor
+
+# Copy OpenConnect web UI (we'll build this)
+# For now, we'll use a lightweight web interface approach
+
+# Create OpenConnect connection script
+COPY connect-vpn.sh /opt/openconnect/connect-vpn.sh
+RUN chmod +x /opt/openconnect/connect-vpn.sh
+
+# Create supervisor configuration
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Create simple web UI for OpenConnect control
+COPY openconnect-web.py /opt/openconnect/web.py
+RUN chmod +x /opt/openconnect/web.py
+
+# Expose ports
+EXPOSE 8080 8443 4822
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/guacamole/ || exit 1
+
+# Run supervisor
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

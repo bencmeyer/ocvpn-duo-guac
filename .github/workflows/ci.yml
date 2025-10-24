@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build docker images
+        run: |
+          docker build -t openconnect-vpn:ci .
+          docker build -t openconnect-vpn-all:ci -f allin1/Dockerfile.allin1 allin1/
+
+      # Optionally push to registry (needs secrets)
+      - name: Push to Docker Hub (optional)
+        if: env.DOCKERHUB_USERNAME != ''
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+          docker tag openconnect-vpn:ci $DOCKERHUB_USERNAME/openconnect-vpn:latest
+          docker tag openconnect-vpn-all:ci $DOCKERHUB_USERNAME/openconnect-vpn-all:latest
+          docker push $DOCKERHUB_USERNAME/openconnect-vpn:latest
+          docker push $DOCKERHUB_USERNAME/openconnect-vpn-all:latest

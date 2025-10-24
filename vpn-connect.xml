@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Container version="2">
+  <Name>openconnect-vpn</Name>
+  <Repository>openconnect-vpn-all:latest</Repository>
+  <Registry>library</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>true</Privileged>
+  <CapAdd>
+    <Cap>NET_ADMIN</Cap>
+    <Cap>SYS_ADMIN</Cap>
+    <Cap>NET_RAW</Cap>
+  </CapAdd>
+  <Support>https://github.com/your-repo/issues</Support>
+  <Project>https://www.infradead.org/openconnect/</Project>
+  <Overview>OpenConnect VPN + Guacamole All-in-One Gateway - VPN client with RDP/SSH/VNC proxy</Overview>
+  <Category>Network</Category>
+  <WebUI>http://[IP]:[PORT:8080]</WebUI>
+  <TemplateURL/>
+  <Icon>https://www.infradead.org/openconnect/logo.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled>1666123456</DateInstalled>
+  <DonateText/>
+  <DonateLink/>
+  <Description>
+    All-in-one OpenConnect VPN + Guacamole Container for Unraid:
+    
+    FEATURES:
+    - Automated OpenConnect VPN client with persistent connection
+    - Guacamole RDP/SSH/VNC remote desktop gateway
+    - Special character password support (!, @, #, $, etc.)
+    - Automatic Duo 2FA handling (push/phone/sms)
+    - Internal DNS resolution for domain names
+    - MariaDB database for Guacamole configuration
+    - supervisord process management
+    
+    PORTS:
+    - 8080: Guacamole web UI (login: admin/admin - CHANGE PASSWORD!)
+    - 9000: openconnect-web VPN monitor
+    
+    REQUIRES:
+    - Privileged mode: ON
+    - VPN credentials with Duo 2FA setup
+    
+    QUICKSTART:
+    1. Fill in VPN_USER and VPN_PASS
+    2. Adjust VPN_SERVER, VPN_AUTHGROUP if needed
+    3. Set DNS_SERVERS for internal domains
+    4. Click Create
+    5. Access http://unraid-ip:8080 when ready
+  </Description>
+  <Networking>
+    <Mode>bridge</Mode>
+    <Publish>
+      <Port>
+        <HostPort>8080</HostPort>
+        <ContainerPort>8080</ContainerPort>
+        <Protocol>tcp</Protocol>
+      </Port>
+      <Port>
+        <HostPort>9000</HostPort>
+        <ContainerPort>9000</ContainerPort>
+        <Protocol>tcp</Protocol>
+      </Port>
+    </Publish>
+  </Networking>
+  <Data/>
+  <Environment>
+    <Variable>
+      <Name>VPN_USER</Name>
+      <Value/>
+      <Mode/>
+      <Description>VPN username</Description>
+      <Unraid>false</Unraid>
+      <FileApply/>
+      <Tooltip>Your VPN account username (e.g., NetID for Illinois)</Tooltip>
+      <IsFileContent>false</IsFileContent>
+    </Variable>
+    <Variable>
+      <Name>VPN_PASS</Name>
+      <Value/>
+      <Mode/>
+      <Description>VPN password</Description>
+      <Unraid>false</Unraid>
+      <FileApply/>
+      <Tooltip>Your VPN password. Special characters (!, @, #, $) are fully supported.</Tooltip>
+      <IsFileContent>false</IsFileContent>
+    </Variable>
+    <Variable>
+      <Name>VPN_SERVER</Name>
+      <Value>vpn.illinois.edu</Value>
+      <Mode/>
+      <Description>VPN server hostname</Description>
+      <Unraid>false</Unraid>
+      <FileApply/>
+      <Tooltip>VPN server to connect to (default: vpn.illinois.edu)</Tooltip>
+      <IsFileContent>false</IsFileContent>
+    </Variable>
+    <Variable>
+      <Name>VPN_AUTHGROUP</Name>
+      <Value>OpenConnect1 (Split)</Value>
+      <Mode/>
+      <Description>VPN authentication group</Description>
+      <Unraid>false</Unraid>
+      <FileApply/>
+      <Tooltip>Auth group on VPN server (default: OpenConnect1 (Split) for Illinois)</Tooltip>
+      <IsFileContent>false</IsFileContent>
+    </Variable>
+    <Variable>
+      <Name>DUO_METHOD</Name>
+      <Value>push</Value>
+      <Mode/>
+      <Description>Duo 2FA method</Description>
+      <Unraid>false</Unraid>
+      <FileApply/>
+      <Tooltip>Duo response: "push" (app notification), "phone" (call), or "sms" (text)</Tooltip>
+      <IsFileContent>false</IsFileContent>
+    </Variable>
+    <Variable>
+      <Name>DNS_SERVERS</Name>
+      <Value>130.126.2.131</Value>
+      <Mode/>
+      <Description>DNS servers (space-separated)</Description>
+      <Unraid>false</Unraid>
+      <FileApply/>
+      <Tooltip>For Illinois: 130.126.2.131 (resolves internal AD domains)</Tooltip>
+      <IsFileContent>false</IsFileContent>
+    </Variable>
+    <Variable>
+      <Name>DEBUG</Name>
+      <Value>false</Value>
+      <Mode/>
+      <Description>Enable debug output</Description>
+      <Unraid>false</Unraid>
+      <FileApply/>
+      <Tooltip>Set to "true" for verbose logs, "false" for clean output</Tooltip>
+      <IsFileContent>false</IsFileContent>
+    </Variable>
+    <Variable>
+      <Name>GUACAMOLE_ADMIN_USER</Name>
+      <Value>admin</Value>
+      <Mode/>
+      <Description>Guacamole admin username</Description>
+      <Unraid>false</Unraid>
+      <FileApply/>
+      <Tooltip>Guacamole web UI admin username (CHANGE PASSWORD AFTER FIRST LOGIN!)</Tooltip>
+      <IsFileContent>false</IsFileContent>
+    </Variable>
+    <Variable>
+      <Name>GUACAMOLE_ADMIN_PASS</Name>
+      <Value>admin</Value>
+      <Mode/>
+      <Description>Guacamole admin password</Description>
+      <Unraid>false</Unraid>
+      <FileApply/>
+      <Tooltip>Guacamole web UI admin password. MUST CHANGE on first login!</Tooltip>
+      <IsFileContent>false</IsFileContent>
+    </Variable>
+  </Environment>
+  <Labels/>
+  <Config Name="VPN Username" Target="VPN_USER" Default="" Mode="" Description="Your VPN username" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="VPN Password" Target="VPN_PASS" Default="" Mode="" Description="Your VPN password (special chars OK)" Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="VPN Server" Target="VPN_SERVER" Default="vpn.illinois.edu" Mode="" Description="VPN server hostname" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Auth Group" Target="VPN_AUTHGROUP" Default="OpenConnect1 (Split)" Mode="" Description="VPN authentication group" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Duo Method" Target="DUO_METHOD" Default="push" Mode="" Description="Duo 2FA method (push/phone/sms)" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="DNS Servers" Target="DNS_SERVERS" Default="130.126.2.131" Mode="" Description="DNS servers for internal domain resolution" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Guacamole Port" Target="8080" Default="8080" Mode="tcp" Description="Guacamole Web UI port" Type="Port" Display="always" Required="true" Mask="false"/>
+  <Config Name="openconnect-web Port" Target="9000" Default="9000" Mode="tcp" Description="openconnect-web VPN Monitor port" Type="Port" Display="always" Required="false" Mask="false"/>
+  <Config Name="Debug" Target="DEBUG" Default="false" Mode="" Description="Enable debug output (true/false)" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Guacamole Admin User" Target="GUACAMOLE_ADMIN_USER" Default="admin" Mode="" Description="Guacamole web UI admin username" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Guacamole Admin Pass" Target="GUACAMOLE_ADMIN_PASS" Default="admin" Mode="" Description="Guacamole web UI admin password" Type="Variable" Display="advanced" Required="false" Mask="true"/>
+</Container>

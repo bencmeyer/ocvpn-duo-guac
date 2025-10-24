@@ -1,0 +1,61 @@
+version: '3.8'
+
+# All-in-One OpenConnect VPN + Guacamole Container
+# For Unraid: Simply run: docker-compose -f docker-compose-allin1.yml up -d
+
+services:
+  openconnect-vpn:
+    image: openconnect-vpn-all:latest
+    container_name: openconnect-vpn
+    
+    # Required for VPN TUN device access
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - NET_RAW
+    
+    # Port mappings
+    ports:
+      - "8080:8080"  # Guacamole web UI
+      - "9000:9000"  # openconnect-web UI
+    
+    # VPN Configuration
+    environment:
+      # Required - Your VPN credentials
+      VPN_USER: "${VPN_USER}"
+      VPN_PASS: "${VPN_PASS}"
+      
+      # Optional - VPN Server Settings (defaults provided)
+      VPN_SERVER: "${VPN_SERVER:-vpn.illinois.edu}"
+      VPN_AUTHGROUP: "${VPN_AUTHGROUP:-OpenConnect1 (Split)}"
+      DUO_METHOD: "${DUO_METHOD:-push}"
+      DNS_SERVERS: "${DNS_SERVERS:-130.126.2.131}"
+      DEBUG: "${DEBUG:-false}"
+      
+      # Optional - Guacamole Admin Credentials
+      GUACAMOLE_ADMIN_USER: "${GUACAMOLE_ADMIN_USER:-admin}"
+      GUACAMOLE_ADMIN_PASS: "${GUACAMOLE_ADMIN_PASS:-admin}"
+    
+    # Auto-restart on failure
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "ip", "addr", "show", "tun0"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+# Example for Unraid .env file:
+#
+# VPN_USER=your_netid
+# VPN_PASS=your_password
+# VPN_SERVER=vpn.illinois.edu
+# VPN_AUTHGROUP=OpenConnect1 (Split)
+# DUO_METHOD=push
+# DNS_SERVERS=130.126.2.131
+# DEBUG=false
+# GUACAMOLE_ADMIN_USER=admin
+# GUACAMOLE_ADMIN_PASS=admin

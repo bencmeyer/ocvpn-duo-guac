@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  guacamole:
+    image: jasonbean/guacamole:latest
+    container_name: guacamole
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+    volumes:
+      - /mnt/user/appdata/ApacheGuacamole:/config
+    environment:
+      MYSQL_ROOT_PASSWORD: example_root_pw
+
+  openconnect-web:
+    image: weikinhuang/openconnect-web:latest
+    container_name: openconnect-web
+    restart: unless-stopped
+    ports:
+      - 9000:9000
+    environment:
+      - PORT=9000
+      - API_BASE=/api
+    volumes:
+      - ./connect-vpn.sh:/usr/local/bin/connect-vpn.sh:ro
+    depends_on:
+      - guacamole
+
+  vpn-client:
+    image: openconnect-vpn:latest
+    container_name: vpn-client
+    restart: unless-stopped
+    environment:
+      VPN_USER: ""
+      VPN_PASS: ""
+      VPN_SERVER: "vpn.illinois.edu"
+      VPN_AUTHGROUP: "OpenConnect1 (Split)"
+      DUO_METHOD: "push"
+      DNS_SERVERS: "130.126.2.131"
+    volumes:
+      - ./connect-vpn.sh:/usr/local/bin/connect-vpn.sh:ro
+    # Note: Typically vpn-client runs in privileged/host mode for TUN device
+    # Uncomment below for host mode (if you want other containers to use network namespace)
+    # network_mode: host
+    # cap_add:
+    #   - NET_ADMIN
+    #   - SYS_ADMIN
+
+networks:
+  default:
+    driver: bridge

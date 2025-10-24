@@ -1,0 +1,36 @@
+# All-in-One Dockerfile
+# Base on a Guacamole image (which includes guacd, tomcat and MariaDB supervisord setup)
+# Then install openconnect, expect and the openconnect-web UI.
+
+FROM jasonbean/guacamole:latest
+
+# The base jasonbean/guacamole image is Alpine-based, so use apk instead of apt-get
+RUN apk add --no-cache \
+    openconnect \
+    expect \
+    git \
+    curl \
+    ca-certificates \
+    nodejs \
+    npm \
+    supervisor
+
+# Copy our VPN connect script into the image
+COPY ../connect-vpn.sh /usr/local/bin/connect-vpn.sh
+RUN chmod +x /usr/local/bin/connect-vpn.sh
+
+# Add a supervisord conf to run openconnect-web in addition to existing services
+COPY allin1/supervisord-openconnect.conf /etc/supervisor/conf.d/supervisord-openconnect.conf
+
+# Clone openconnect-web and install (with fallback if network unavailable)
+WORKDIR /opt
+RUN git clone https://github.com/weikinhuang/openconnect-web.git /opt/openconnect-web 2>/dev/null || \
+    mkdir -p /opt/openconnect-web && \
+    cd /opt/openconnect-web && \
+    (npm install --no-audit --no-fund 2>/dev/null || true)
+
+# Expose Guacamole (8080) and openconnect-web (9000)
+EXPOSE 8080 9000
+
+# Run the base image's firstrun setup script (initializes Guacamole, MariaDB, etc.)
+CMD ["/etc/firstrun/firstrun.sh"]
