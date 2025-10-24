@@ -47,16 +47,24 @@ SQLEOF
     done
 
     echo "  Creating admin user..."
-    # Generate password hash using Guacamole's hash algorithm (SHA256)
-    # For 'guacadmin': SHA256("guacadmin" + salt) where salt is 16 bytes
-    # We'll use a simple approach: insert with the env vars but generate proper hash
-    HASH=$(echo -n "$GUAC_DEFAULT_PASS" | sha256sum | cut -d' ' -f1)
-    SALT="E767AFF8D5E0F1D3A9B2C5D7E1F3A5B7"
+    # Check if user already exists
+    USER_EXISTS=$(mysql -u root guacamole -e "SELECT COUNT(*) FROM guacamole_user WHERE username='$GUAC_DEFAULT_USER';" 2>/dev/null | tail -1)
     
-    mysql -u root guacamole << SQLEOF 2>/dev/null
-INSERT INTO guacamole_user (username, password_hash, password_salt, disabled) VALUES
-('$GUAC_DEFAULT_USER', UNHEX('$HASH'), UNHEX('$SALT'), false);
-SQLEOF
+    if [ "$USER_EXISTS" -eq 0 ]; then
+        # Generate password hash using Guacamole's hash algorithm (SHA256)
+        HASH=$(echo -n "$GUAC_DEFAULT_PASS" | sha256sum | cut -d' ' -f1)
+        SALT="E767AFF8D5E0F1D3A9B2C5D7E1F3A5B7"
+        
+        mysql -u root guacamole -e "INSERT INTO guacamole_user (username, password_hash, password_salt, disabled) VALUES ('$GUAC_DEFAULT_USER', UNHEX('$HASH'), UNHEX('$SALT'), 0);" 2>&1
+        
+        if [ $? -eq 0 ]; then
+            echo "  ✓ Admin user created"
+        else
+            echo "  ✗ Failed to create admin user"
+        fi
+    else
+        echo "  ✓ Admin user already exists"
+    fi
 fi
 
 # Configure Guacamole MySQL connection
