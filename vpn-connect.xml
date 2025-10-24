@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Container version="2">
   <Name>openconnect-vpn</Name>
-  <Repository>openconnect-vpn-all:latest</Repository>
-  <Registry>library</Registry>
+  <Repository>bencmeyer/ocvpn-duo-guac</Repository>
+  <Registry></Registry>
   <Network>bridge</Network>
   <MyIP/>
   <Shell>sh</Shell>
@@ -126,7 +126,7 @@
       <Description>DNS servers (space-separated)</Description>
       <Unraid>false</Unraid>
       <FileApply/>
-      <Tooltip>For Illinois: 130.126.2.131 (resolves internal AD domains)</Tooltip>
+      <Tooltip>Illinois: 130.126.2.131 | Google: 8.8.8.8 8.8.4.4 | Cloudflare: 1.1.1.1 1.0.0.1 | Quad9: 9.9.9.9</Tooltip>
       <IsFileContent>false</IsFileContent>
     </Variable>
     <Variable>
