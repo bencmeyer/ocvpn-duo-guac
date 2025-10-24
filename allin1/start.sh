@@ -74,13 +74,27 @@ SQLEOF
         echo "  ✓ Admin user already exists"
     fi
     
-    # Always ensure admin permissions are set (in case user was created before)
+    # Always ensure admin permissions are set - grant ALL system permissions
     mysql -u root guacamole << SQLEOF
 DELETE FROM guacamole_system_permission 
   WHERE entity_id = (SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER');
 INSERT INTO guacamole_system_permission (entity_id, permission) 
   VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 'ADMINISTER');
+INSERT INTO guacamole_system_permission (entity_id, permission) 
+  VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 'CREATE_CONNECTION');
+INSERT INTO guacamole_system_permission (entity_id, permission) 
+  VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 'CREATE_CONNECTION_GROUP');
+INSERT INTO guacamole_system_permission (entity_id, permission) 
+  VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 'CREATE_SHARING_PROFILE');
+INSERT INTO guacamole_system_permission (entity_id, permission) 
+  VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 'CREATE_USER');
+INSERT INTO guacamole_system_permission (entity_id, permission) 
+  VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 'CREATE_USER_GROUP');
+INSERT INTO guacamole_system_permission (entity_id, permission) 
+  VALUES ((SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER'), 'MANAGE_SYSTEM');
 SQLEOF
+    
+    echo "  ✓ Admin permissions configured"
 else
     echo "  Database already initialized"
 fi
