@@ -89,13 +89,13 @@ def api_logs():
 
 @app.route('/api/connect', methods=['POST'])
 def api_connect():
-    """Restart VPN connection"""
+    """Start VPN connection"""
     try:
-        # Restart the openconnect-vpn service via supervisor
-        subprocess.run(['supervisorctl', 'restart', 'openconnect-vpn'], 
+        # Start the openconnect-vpn service via supervisor
+        subprocess.run(['supervisorctl', 'start', 'openconnect-vpn'], 
                       check=True)
         time.sleep(2)
-        return jsonify({'success': True, 'message': 'VPN connection restarting'})
+        return jsonify({'success': True, 'message': 'VPN connection starting'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -103,8 +103,10 @@ def api_connect():
 def api_disconnect():
     """Stop VPN connection"""
     try:
+        # Stop the openconnect-vpn service via supervisor
         subprocess.run(['supervisorctl', 'stop', 'openconnect-vpn'], 
                       check=True)
+        time.sleep(1)
         return jsonify({'success': True, 'message': 'VPN connection stopped'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -115,8 +117,8 @@ def api_reconnect():
     try:
         subprocess.run(['supervisorctl', 'restart', 'openconnect-vpn'], 
                       check=True)
-        time.sleep(1)
-        return jsonify({'success': True, 'message': 'VPN reconnecting'})
+        time.sleep(2)
+        return jsonify({'success': True, 'message': 'VPN connection restarting'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

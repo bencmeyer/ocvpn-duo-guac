@@ -38,6 +38,10 @@ RUN echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "[include]" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "files = /etc/supervisor/conf.d/openconnect-services.conf" >> /etc/supervisor/conf.d/supervisord.conf
 
+# Configure default Guacamole credentials (admin/admin)
+# This creates a default admin user in the user-mapping.xml template
+RUN sed -i 's|<user-mapping>|<user-mapping>\n\n    <!-- Default admin user -->\n    <authorize username="admin" password="admin">\n    </authorize>|' /etc/firstrun/templates/user-mapping.xml
+
 # Expose ports
 EXPOSE 8080 9000
 
