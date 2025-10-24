@@ -262,4 +262,4 @@ if __name__ == '__main__':
     except ImportError:
         subprocess.run(['pip3', 'install', 'flask'], check=True)
     
-    app.run(host='0.0.0.0', port=8443, ssl_context='adhoc')
+    app.run(host='0.0.0.0', port=9000)

@@ -34,7 +34,12 @@ RUN apt-get update && apt-get install -y \
     iproute2 \
     ca-certificates \
     nano \
+    python3 \
+    python3-pip \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies for web UI
+RUN pip3 install --no-cache-dir flask
 
 # Create directories
 RUN mkdir -p /etc/supervisor/conf.d /opt/openconnect /var/log/supervisor
