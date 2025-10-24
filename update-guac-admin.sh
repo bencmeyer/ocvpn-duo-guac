@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script to set up Guacamole admin credentials
-# Creates a JSON authentication configuration for the Debian Guacamole image
+# Creates an XML authentication configuration with admin privileges
 
 GUAC_HOME="${GUACAMOLE_HOME:-/root/.guacamole}"
 mkdir -p "$GUAC_HOME"
@@ -10,11 +10,16 @@ mkdir -p "$GUAC_HOME"
 ADMIN_USER="${GUAC_DEFAULT_USER:-guacadmin}"
 ADMIN_PASS="${GUAC_DEFAULT_PASS:-guacadmin}"
 
-# Create user-mapping.xml for XML authentication backend (fallback)
+# Create user-mapping.xml for XML authentication backend with admin permissions
 cat > "$GUAC_HOME/user-mapping.xml" << 'XMLEOF'
 <user-mapping>
-    <authorize username="ADMIN_USER_PLACEHOLDER" password="ADMIN_PASS_PLACEHOLDER">
-        <!-- Connection definitions go here -->
+    <authorize username="ADMIN_USER_PLACEHOLDER" password="ADMIN_PASS_PLACEHOLDER" 
+               admin="true"
+               create="true"
+               delete="true"
+               update="true"
+               administer="true">
+        <!-- Admin user can manage all connections -->
     </authorize>
 </user-mapping>
 XMLEOF
@@ -25,3 +30,4 @@ sed -i "s|ADMIN_PASS_PLACEHOLDER|$ADMIN_PASS|g" "$GUAC_HOME/user-mapping.xml"
 
 echo "✓ Created Guacamole user configuration: $ADMIN_USER"
 echo "✓ Location: $GUAC_HOME/user-mapping.xml"
+echo "✓ Admin privileges: enabled"

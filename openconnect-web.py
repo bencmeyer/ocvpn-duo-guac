@@ -24,9 +24,18 @@ def get_vpn_status():
         result = subprocess.run(['ip', 'addr', 'show', 'tun0'], 
                               capture_output=True, text=True)
         if result.returncode == 0 and 'inet' in result.stdout:
-            # Extract IP
+            # Extract IPv4 first (prefer IPv4 over IPv6)
             for line in result.stdout.split('\n'):
-                if 'inet' in line and 'tun0' not in line:
+                if 'inet ' in line and 'tun0' not in line:  # 'inet ' with space = IPv4
+                    ip = line.strip().split()[1].split('/')[0]
+                    return {
+                        'status': 'connected',
+                        'ip': ip,
+                        'timestamp': time.time()
+                    }
+            # Fallback to IPv6 if no IPv4 found
+            for line in result.stdout.split('\n'):
+                if 'inet6' in line and 'tun0' not in line:
                     ip = line.strip().split()[1].split('/')[0]
                     return {
                         'status': 'connected',
@@ -59,7 +68,7 @@ def get_vpn_settings():
     }
 
 def get_logs(lines=50):
-    """Get recent logs from supervisor output and error logs, formatted nicely"""
+    """Get recent logs from supervisor output and error logs, formatted and filtered"""
     try:
         all_lines = []
         seen_lines = set()
@@ -82,17 +91,27 @@ def get_logs(lines=50):
             except:
                 pass
         
-        # Filter and deduplicate
-        unique_lines = []
+        # Filter and deduplicate, remove sensitive data
+        filtered_lines = []
         for line in all_lines[-lines*2:]:  # Get more to filter duplicates
             line = line.rstrip()
-            if line and line not in seen_lines and not line.startswith('=================='):
+            
+            # Skip unimportant lines
+            if not line or line.startswith('==================') or 'Configuring DNS' in line:
+                continue
+            
+            # Redact passwords and sensitive info
+            line = line.replace(os.environ.get('VPN_PASS', 'REDACTED'), '***REDACTED***')
+            if 'password' in line.lower():
+                line = '[REDACTED - password/auth info]'
+            
+            if line not in seen_lines:
                 seen_lines.add(line)
-                unique_lines.append(line)
+                filtered_lines.append(line)
         
         # Return formatted logs (last N unique lines)
-        if unique_lines:
-            return '\n'.join(unique_lines[-lines:])
+        if filtered_lines:
+            return '\n'.join(filtered_lines[-lines:])
         else:
             return "No logs available yet. Start VPN connection to generate logs."
     except Exception as e:
