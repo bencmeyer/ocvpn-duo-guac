@@ -89,18 +89,6 @@ DELETE FROM guacamole_system_permission
   WHERE entity_id = $ENTITY_ID;
 INSERT INTO guacamole_system_permission (entity_id, permission) 
   VALUES ($ENTITY_ID, 'ADMINISTER');
-INSERT INTO guacamole_system_permission (entity_id, permission) 
-  VALUES ($ENTITY_ID, 'CREATE_CONNECTION');
-INSERT INTO guacamole_system_permission (entity_id, permission) 
-  VALUES ($ENTITY_ID, 'CREATE_CONNECTION_GROUP');
-INSERT INTO guacamole_system_permission (entity_id, permission) 
-  VALUES ($ENTITY_ID, 'CREATE_SHARING_PROFILE');
-INSERT INTO guacamole_system_permission (entity_id, permission) 
-  VALUES ($ENTITY_ID, 'CREATE_USER');
-INSERT INTO guacamole_system_permission (entity_id, permission) 
-  VALUES ($ENTITY_ID, 'CREATE_USER_GROUP');
-INSERT INTO guacamole_system_permission (entity_id, permission) 
-  VALUES ($ENTITY_ID, 'MANAGE_SYSTEM');
 SQLEOF
         
         # Verify permissions were set
