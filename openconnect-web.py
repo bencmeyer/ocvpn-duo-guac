@@ -16,7 +16,7 @@ app = Flask(__name__)
 # Configuration
 CONFIG_FILE = '/tmp/openconnect_config.json'
 VPN_PID_FILE = '/tmp/openconnect.pid'
-LOG_FILE = '/var/log/supervisor/openconnect-vpn.log'
+LOG_DIR = '/var/log/supervisor'
 
 def get_vpn_status():
     """Check if VPN is connected"""
@@ -28,9 +28,25 @@ def get_vpn_status():
             for line in result.stdout.split('\n'):
                 if 'inet' in line and 'tun0' not in line:
                     ip = line.strip().split()[1].split('/')[0]
+                    
+                    # Try to get additional status from logs
+                    auth_status = "Authenticated"
+                    try:
+                        stdout_log = f'{LOG_DIR}/openconnect-vpn.out.log'
+                        if os.path.exists(stdout_log):
+                            with open(stdout_log, 'r') as f:
+                                content = f.read()
+                                if 'Authenticated' in content:
+                                    auth_status = "Authenticated"
+                                elif 'Duo' in content:
+                                    auth_status = "Awaiting Duo approval..."
+                    except:
+                        pass
+                    
                     return {
                         'status': 'connected',
                         'ip': ip,
+                        'auth_status': auth_status,
                         'timestamp': time.time()
                     }
         return {'status': 'disconnected'}
@@ -59,13 +75,36 @@ def get_vpn_settings():
     }
 
 def get_logs(lines=50):
-    """Get recent logs"""
+    """Get recent logs from supervisor output and error logs"""
     try:
-        with open(LOG_FILE, 'r') as f:
-            all_lines = f.readlines()
-        return ''.join(all_lines[-lines:])
-    except:
-        return "Logs not available"
+        all_lines = []
+        
+        # Read stdout log
+        stdout_log = f'{LOG_DIR}/openconnect-vpn.out.log'
+        if os.path.exists(stdout_log):
+            try:
+                with open(stdout_log, 'r') as f:
+                    all_lines.extend(f.readlines())
+            except:
+                pass
+        
+        # Read stderr log
+        stderr_log = f'{LOG_DIR}/openconnect-vpn.err.log'
+        if os.path.exists(stderr_log):
+            try:
+                with open(stderr_log, 'r') as f:
+                    all_lines.extend(f.readlines())
+            except:
+                pass
+        
+        # Sort and return last N lines
+        if all_lines:
+            all_lines.sort()
+            return ''.join(all_lines[-lines:])
+        else:
+            return "No logs available yet. Start VPN connection to generate logs."
+    except Exception as e:
+        return f"Error reading logs: {str(e)}"
 
 @app.route('/')
 def index():
@@ -92,6 +131,7 @@ def api_status():
     return jsonify({
         'connected': status['status'] == 'connected',
         'ip': status.get('ip', 'N/A'),
+        'auth_status': status.get('auth_status', 'N/A'),
         'dns': dns,
         'timestamp': status.get('timestamp', 0)
     })
@@ -267,7 +307,7 @@ def dashboard():
                         if (data.connected) {
                             statusEl.textContent = '✅ Status: Connected';
                             statusEl.className = 'status connected';
-                            infoEl.innerHTML = `<strong>VPN IP:</strong> ${data.ip}<br><strong>DNS:</strong> ${data.dns.join(', ')}`;
+                            infoEl.innerHTML = `<strong>VPN IP:</strong> ${data.ip}<br><strong>DNS:</strong> ${data.dns.join(', ')}<br><strong>Auth Status:</strong> ${data.auth_status || 'Authenticated'}`;
                         } else {
                             statusEl.textContent = '❌ Status: Disconnected';
                             statusEl.className = 'status disconnected';

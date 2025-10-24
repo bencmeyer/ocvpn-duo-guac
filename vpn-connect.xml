@@ -121,12 +121,12 @@
     </Variable>
     <Variable>
       <Name>DNS_SERVERS</Name>
-      <Value>130.126.2.131</Value>
+      <Value>8.8.8.8 130.126.2.131</Value>
       <Mode/>
       <Description>DNS servers (space-separated)</Description>
       <Unraid>false</Unraid>
       <FileApply/>
-      <Tooltip>Illinois: 130.126.2.131 | Google: 8.8.8.8 8.8.4.4 | Cloudflare: 1.1.1.1 1.0.0.1 | Quad9: 9.9.9.9</Tooltip>
+      <Tooltip>Google: 8.8.8.8 8.8.4.4 | Cloudflare: 1.1.1.1 1.0.0.1 | Quad9: 9.9.9.9</Tooltip>
       <IsFileContent>false</IsFileContent>
     </Variable>
     <Variable>
@@ -166,7 +166,7 @@
   <Config Name="VPN Server" Target="VPN_SERVER" Default="vpn.illinois.edu" Mode="" Description="VPN server hostname" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Auth Group" Target="VPN_AUTHGROUP" Default="OpenConnect1 (Split)" Mode="" Description="VPN authentication group" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Duo Method" Target="DUO_METHOD" Default="push" Mode="" Description="Duo 2FA method (push/phone/sms)" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="DNS Servers" Target="DNS_SERVERS" Default="130.126.2.131" Mode="" Description="DNS servers for internal domain resolution" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="DNS Servers" Target="DNS_SERVERS" Default="8.8.8.8 130.126.2.131" Mode="" Description="DNS servers for internal domain resolution" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Guacamole Port" Target="8080" Default="8080" Mode="tcp" Description="Guacamole Web UI port" Type="Port" Display="always" Required="true" Mask="false"/>
   <Config Name="openconnect-web Port" Target="9000" Default="9000" Mode="tcp" Description="openconnect-web VPN Monitor port" Type="Port" Display="always" Required="false" Mask="false"/>
   <Config Name="Guacamole Admin User" Target="GUACAMOLE_ADMIN_USER" Default="guacadmin" Mode="" Description="Guacamole web UI admin username" Type="Variable" Display="always" Required="false" Mask="false"/>

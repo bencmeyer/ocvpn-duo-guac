@@ -56,26 +56,15 @@ RUN mkdir -p /etc/supervisor/conf.d && \
     echo "supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface" >> /etc/supervisor/supervisord.conf
 
 # Configure default Guacamole credentials via environment variable (Debian image uses env vars)
+# GUACD_HOSTNAME must be set for the Debian-based Guacamole image
 ENV GUACAMOLE_HOME=/opt/guacamole \
     GUAC_DEFAULT_USER=guacadmin \
-    GUAC_DEFAULT_PASS=guacadmin
+    GUAC_DEFAULT_PASS=guacadmin \
+    GUACD_HOSTNAME=localhost
 
-# Create custom entrypoint script that starts both guacamole and supervisord
-RUN echo '#!/bin/bash' > /opt/start.sh && \
-    echo 'set -e' >> /opt/start.sh && \
-    echo '' >> /opt/start.sh && \
-    echo '# Start guacamole initialization (guacd only, not tomcat)' >> /opt/start.sh && \
-    echo 'export GUACAMOLE_HOME=${GUACAMOLE_HOME:-/opt/guacamole}' >> /opt/start.sh && \
-    echo 'mkdir -p /root/.guacamole' >> /opt/start.sh && \
-    echo 'cp $GUACAMOLE_HOME/guacamole.properties /root/.guacamole/ 2>/dev/null || true' >> /opt/start.sh && \
-    echo '' >> /opt/start.sh && \
-    echo '# Start Tomcat with Guacamole in background' >> /opt/start.sh && \
-    echo '/opt/guacamole/bin/start.sh &' >> /opt/start.sh && \
-    echo 'sleep 2' >> /opt/start.sh && \
-    echo '' >> /opt/start.sh && \
-    echo '# Start supervisord in foreground' >> /opt/start.sh && \
-    echo 'exec /usr/bin/supervisord -c /etc/supervisor/supervisord.conf -n' >> /opt/start.sh && \
-    chmod +x /opt/start.sh
+# Copy custom entrypoint script that starts both guacamole and supervisord
+COPY allin1/start.sh /opt/start.sh
+RUN chmod +x /opt/start.sh
 
 # Expose ports
 EXPOSE 8080 9000
