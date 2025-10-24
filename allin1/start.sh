@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 echo "=== OpenConnect VPN + Guacamole All-in-One Startup ==="
 
@@ -32,7 +31,9 @@ done
 
 # Initialize Guacamole database if needed
 echo "[3/4] Setting up Guacamole database..."
-if ! mysql -u root -e "USE guacamole; SELECT 1" 2>/dev/null; then
+DB_EXISTS=$(mysql -u root -se "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME='guacamole';" 2>/dev/null)
+
+if [ -z "$DB_EXISTS" ]; then
     echo "  Creating database..."
     mysql -u root << SQLEOF
 CREATE DATABASE IF NOT EXISTS guacamole;
@@ -43,32 +44,29 @@ SQLEOF
 
     echo "  Loading schema..."
     find /opt/guacamole -name "*.sql" -type f 2>/dev/null | sort | while read f; do
-        mysql -u root guacamole < "$f" 2>/dev/null || true
+        echo "    Loading $(basename $f)..."
+        mysql -u root guacamole < "$f" 2>&1 | grep -i error || true
     done
 
     echo "  Creating admin user..."
-    # Check if user already exists
-    USER_EXISTS=$(mysql -u root guacamole -se "SELECT COUNT(*) FROM guacamole_user WHERE username='$GUAC_DEFAULT_USER';" 2>/dev/null)
+    # Generate password hash using Guacamole's hash algorithm (SHA256)
+    HASH=$(echo -n "$GUAC_DEFAULT_PASS" | sha256sum | cut -d' ' -f1)
+    SALT="E767AFF8D5E0F1D3A9B2C5D7E1F3A5B7"
     
-    if [ -z "$USER_EXISTS" ] || [ "$USER_EXISTS" -eq 0 ]; then
-        # Generate password hash using Guacamole's hash algorithm (SHA256)
-        HASH=$(echo -n "$GUAC_DEFAULT_PASS" | sha256sum | cut -d' ' -f1)
-        SALT="E767AFF8D5E0F1D3A9B2C5D7E1F3A5B7"
-        
-        mysql -u root guacamole -e "INSERT INTO guacamole_user (username, password_hash, password_salt, disabled) VALUES ('$GUAC_DEFAULT_USER', UNHEX('$HASH'), UNHEX('$SALT'), 0);" 2>&1
-        
-        if [ $? -eq 0 ]; then
-            echo "  ✓ Admin user created"
-        else
-            echo "  ✗ Failed to create admin user"
-        fi
+    # Try to insert admin user
+    RESULT=$(mysql -u root guacamole -e "INSERT INTO guacamole_user (username, password_hash, password_salt, disabled) VALUES ('$GUAC_DEFAULT_USER', UNHEX('$HASH'), UNHEX('$SALT'), 0);" 2>&1)
+    if [ $? -eq 0 ]; then
+        echo "  ✓ Admin user created"
     else
-        echo "  ✓ Admin user already exists"
+        echo "  ⚠ Admin user result: $RESULT"
     fi
+else
+    echo "  Database already initialized"
 fi
 
 # Configure Guacamole MySQL connection
 echo "[4/4] Configuring Guacamole..."
+mkdir -p /root/.guacamole
 cat > /root/.guacamole/guacamole.properties << 'EOF'
 mysql-hostname: localhost
 mysql-port: 3306
@@ -79,14 +77,22 @@ EOF
 
 # Wait for Guacamole to be available
 echo "Waiting for Guacamole to become available..."
+GUAC_READY=0
 for i in {1..120}; do
     if curl -s http://localhost:8080/guacamole/ >/dev/null 2>&1; then
         echo "✓ Guacamole ready"
+        GUAC_READY=1
         break
     fi
     [ $((i % 30)) -eq 0 ] && echo "  Still starting... ($i/120s)"
     sleep 1
 done
+
+if [ $GUAC_READY -eq 0 ]; then
+    echo "✗ Guacamole failed to start after 120 seconds"
+    echo "Checking supervisord status..."
+    supervisorctl -c /etc/supervisor/supervisord.conf status
+fi
 
 echo ""
 echo "=== Services Ready ==="
