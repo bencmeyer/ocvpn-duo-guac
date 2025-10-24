@@ -36,7 +36,7 @@ COPY allin1/supervisord-openconnect.conf /etc/supervisor/conf.d/openconnect-serv
 # Modify base supervisord.conf to include our additional configs
 RUN echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "[include]" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "files = /etc/supervisor/conf.d/supervisord-mariadb.conf /etc/supervisor/conf.d/openconnect-services.conf" >> /etc/supervisor/conf.d/supervisord.conf
+    echo "files = /etc/supervisor/conf.d/openconnect-services.conf" >> /etc/supervisor/conf.d/supervisord.conf
 
 # Expose ports
 EXPOSE 8080 9000
