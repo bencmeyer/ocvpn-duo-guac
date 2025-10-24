@@ -51,6 +51,9 @@ SQLEOF
     HASH=$(echo -n "$GUAC_DEFAULT_PASS" | sha256sum | cut -d' ' -f1)
     SALT="E767AFF8D5E0F1D3A9B2C5D7E1F3A5B7"
     
+    echo "    Generated hash: $HASH"
+    echo "    Using salt: $SALT"
+    
     # Check if user exists first
     USER_EXISTS=$(mysql -u root guacamole -se "SELECT COUNT(*) FROM guacamole_user WHERE user_id = (SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER');" 2>/dev/null)
     
@@ -68,6 +71,10 @@ SQLEOF
         ENTITY_ID=$(mysql -u root guacamole -se "SELECT entity_id FROM guacamole_entity WHERE name='$GUAC_DEFAULT_USER' AND type='USER';" 2>/dev/null)
         mysql -u root guacamole -e "UPDATE guacamole_user SET password_hash=UNHEX('$HASH'), password_salt=UNHEX('$SALT') WHERE entity_id=$ENTITY_ID;" 2>/dev/null
         echo "  ✓ Admin user password updated"
+        
+        # Verify password was set
+        DB_HASH=$(mysql -u root guacamole -se "SELECT HEX(password_hash) FROM guacamole_user WHERE entity_id=$ENTITY_ID;" 2>/dev/null)
+        echo "    Stored hash in DB: $DB_HASH"
     fi
     
     # Always ensure admin permissions are set - grant ALL system permissions
@@ -95,6 +102,11 @@ SQLEOF
         PERM_COUNT=$(mysql -u root guacamole -se "SELECT COUNT(*) FROM guacamole_system_permission WHERE entity_id=$ENTITY_ID;" 2>/dev/null)
         PERMS=$(mysql -u root guacamole -se "SELECT GROUP_CONCAT(permission) FROM guacamole_system_permission WHERE entity_id=$ENTITY_ID;" 2>/dev/null)
         echo "  ✓ Admin permissions configured ($PERM_COUNT permissions set: $PERMS)"
+        
+        # Restart Tomcat/Guacamole to clear permission caches
+        echo "  Restarting Guacamole to apply permissions..."
+        supervisorctl -c /etc/supervisor/supervisord.conf restart tomcat 2>/dev/null || true
+        sleep 3
     fi
 else
     echo "  Database already initialized"
