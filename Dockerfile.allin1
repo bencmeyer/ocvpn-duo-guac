@@ -1,25 +1,26 @@
 # OpenConnect + Guacamole all-in-one for Unraid
-# Uses jasonbean/guacamole which is Alpine-based
+# Uses official guacamole image (Debian-based) for better compatibility
 
-FROM jasonbean/guacamole:latest
+FROM guacamole/guacamole:1.4.0
+
+USER root
 
 # Install OpenConnect and dependencies
-# Skip xmlsec - let openconnect use its bundled dependencies
-RUN apk add --no-cache \
+RUN rm -rf /var/lib/apt/lists/* /var/cache/apt && \
+    apt-get update && apt-get install -y --no-install-recommends \
+    openconnect \
     supervisor \
     curl \
     expect \
-    bind-tools \
-    iputils \
+    bind9-utils \
     iproute2 \
     ca-certificates \
     nano \
     python3 \
-    py3-pip && \
-    pip3 install --no-cache-dir flask && \
-    # Install openconnect separately and install its dependencies
-    apk add --no-cache openconnect --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community/ || \
-    apk add --no-cache openconnect
+    python3-pip \
+    iputils-ping \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* \
+    && pip3 install --no-cache-dir flask
 
 # Create directories
 RUN mkdir -p /opt/openconnect /var/log/supervisor
@@ -32,40 +33,56 @@ RUN chmod +x /opt/openconnect/connect-vpn.sh
 COPY openconnect-web.py /opt/openconnect/web.py
 RUN chmod +x /opt/openconnect/web.py
 
-# Add supervisor config for OpenConnect services (complements the base image's config)
-COPY allin1/supervisord-openconnect.conf /etc/supervisor/conf.d/openconnect-services.conf
-
 # Copy Guacamole admin credential update script
 COPY update-guac-admin.sh /opt/update-guac-admin.sh
 RUN chmod +x /opt/update-guac-admin.sh
 
-# Modify base supervisord.conf to include our additional configs and enable socket
-RUN echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "[include]" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "files = /etc/supervisor/conf.d/openconnect-services.conf" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "[unix_http_server]" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "file=/var/run/supervisor.sock" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "[supervisorctl]" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "serverurl=unix:///var/run/supervisor.sock" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "[rpcinterface:supervisor]" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface" >> /etc/supervisor/conf.d/supervisord.conf && \
-    # Also update the fallback config file for supervisorctl
-    sed -i 's|file=/run/supervisord.sock|file=/var/run/supervisor.sock|' /etc/supervisord.conf && \
-    sed -i 's|serverurl=unix:///run/supervisord.sock|serverurl=unix:///var/run/supervisor.sock|' /etc/supervisord.conf
+# Add supervisor config for OpenConnect services
+COPY allin1/supervisord-openconnect.conf /etc/supervisor/conf.d/openconnect-services.conf
 
-# Configure default Guacamole credentials (admin/admin)
-# This creates a default admin user in the user-mapping.xml template
-RUN sed -i 's|<user-mapping>|<user-mapping>\n\n    <!-- Default admin user -->\n    <authorize username="admin" password="admin">\n    </authorize>|' /etc/firstrun/templates/user-mapping.xml
+# Configure supervisor to include our services and enable socket
+RUN mkdir -p /etc/supervisor/conf.d && \
+    echo "" >> /etc/supervisor/supervisord.conf && \
+    echo "[include]" >> /etc/supervisor/supervisord.conf && \
+    echo "files = /etc/supervisor/conf.d/openconnect-services.conf" >> /etc/supervisor/supervisord.conf && \
+    echo "" >> /etc/supervisor/supervisord.conf && \
+    echo "[unix_http_server]" >> /etc/supervisor/supervisord.conf && \
+    echo "file=/var/run/supervisor.sock" >> /etc/supervisor/supervisord.conf && \
+    echo "" >> /etc/supervisor/supervisord.conf && \
+    echo "[supervisorctl]" >> /etc/supervisor/supervisord.conf && \
+    echo "serverurl=unix:///var/run/supervisor.sock" >> /etc/supervisor/supervisord.conf && \
+    echo "" >> /etc/supervisor/supervisord.conf && \
+    echo "[rpcinterface:supervisor]" >> /etc/supervisor/supervisord.conf && \
+    echo "supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface" >> /etc/supervisor/supervisord.conf
+
+# Configure default Guacamole credentials via environment variable (Debian image uses env vars)
+ENV GUACAMOLE_HOME=/opt/guacamole \
+    GUAC_DEFAULT_USER=guacadmin \
+    GUAC_DEFAULT_PASS=guacadmin
+
+# Create custom entrypoint script that starts both guacamole and supervisord
+RUN echo '#!/bin/bash' > /opt/start.sh && \
+    echo 'set -e' >> /opt/start.sh && \
+    echo '' >> /opt/start.sh && \
+    echo '# Start guacamole initialization (guacd only, not tomcat)' >> /opt/start.sh && \
+    echo 'export GUACAMOLE_HOME=${GUACAMOLE_HOME:-/opt/guacamole}' >> /opt/start.sh && \
+    echo 'mkdir -p /root/.guacamole' >> /opt/start.sh && \
+    echo 'cp $GUACAMOLE_HOME/guacamole.properties /root/.guacamole/ 2>/dev/null || true' >> /opt/start.sh && \
+    echo '' >> /opt/start.sh && \
+    echo '# Start Tomcat with Guacamole in background' >> /opt/start.sh && \
+    echo '/opt/guacamole/bin/start.sh &' >> /opt/start.sh && \
+    echo 'sleep 2' >> /opt/start.sh && \
+    echo '' >> /opt/start.sh && \
+    echo '# Start supervisord in foreground' >> /opt/start.sh && \
+    echo 'exec /usr/bin/supervisord -c /etc/supervisor/supervisord.conf -n' >> /opt/start.sh && \
+    chmod +x /opt/start.sh
 
 # Expose ports
 EXPOSE 8080 9000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/guacamole/ || exit 1
+    CMD curl -f http://localhost:8080/ || exit 1
 
-# Use the base image's entry point which handles supervisor correctly
-# (no need to override CMD - base image handles it)
+# Use custom entrypoint
+ENTRYPOINT ["/opt/start.sh"]

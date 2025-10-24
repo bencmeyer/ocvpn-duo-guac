@@ -333,7 +333,7 @@ def dashboard():
                 // Set Guacamole link to use the current host instead of localhost
                 const host = window.location.hostname;
                 const guacLink = document.getElementById('guac-link');
-                guacLink.href = `http://${host}:8080/guacamole/`;
+                guacLink.href = `http://${host}:8080/`;
             }
 
             // Update status every 5 seconds
