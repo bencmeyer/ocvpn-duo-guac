@@ -113,8 +113,14 @@ def api_connect():
     """Start VPN connection"""
     try:
         # Start the openconnect-vpn service via supervisor
-        subprocess.run(['supervisorctl', 'start', 'openconnect-vpn'], 
-                      check=True)
+        result = subprocess.run(['supervisorctl', 'start', 'openconnect-vpn'], 
+                              capture_output=True, text=True)
+        if result.returncode != 0:
+            error_msg = result.stderr or result.stdout or f'Exit code: {result.returncode}'
+            # Exit code 7 usually means already running, which is okay
+            if result.returncode == 7 and 'already' in error_msg.lower():
+                return jsonify({'success': True, 'message': 'VPN connection already running'})
+            return jsonify({'success': False, 'error': error_msg}), 500
         time.sleep(2)
         return jsonify({'success': True, 'message': 'VPN connection starting'})
     except Exception as e:
@@ -125,8 +131,11 @@ def api_disconnect():
     """Stop VPN connection"""
     try:
         # Stop the openconnect-vpn service via supervisor
-        subprocess.run(['supervisorctl', 'stop', 'openconnect-vpn'], 
-                      check=True)
+        result = subprocess.run(['supervisorctl', 'stop', 'openconnect-vpn'], 
+                              capture_output=True, text=True)
+        if result.returncode != 0:
+            error_msg = result.stderr or result.stdout or f'Exit code: {result.returncode}'
+            return jsonify({'success': False, 'error': error_msg}), 500
         time.sleep(1)
         return jsonify({'success': True, 'message': 'VPN connection stopped'})
     except Exception as e:
@@ -136,8 +145,11 @@ def api_disconnect():
 def api_reconnect():
     """Reconnect VPN"""
     try:
-        subprocess.run(['supervisorctl', 'restart', 'openconnect-vpn'], 
-                      check=True)
+        result = subprocess.run(['supervisorctl', 'restart', 'openconnect-vpn'], 
+                              capture_output=True, text=True)
+        if result.returncode != 0:
+            error_msg = result.stderr or result.stdout or f'Exit code: {result.returncode}'
+            return jsonify({'success': False, 'error': error_msg}), 500
         time.sleep(2)
         return jsonify({'success': True, 'message': 'VPN connection restarting'})
     except Exception as e:

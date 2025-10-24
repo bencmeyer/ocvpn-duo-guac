@@ -37,10 +37,22 @@ COPY allin1/supervisord-openconnect.conf /etc/supervisor/conf.d/openconnect-serv
 COPY update-guac-admin.sh /opt/update-guac-admin.sh
 RUN chmod +x /opt/update-guac-admin.sh
 
-# Modify base supervisord.conf to include our additional configs
+# Modify base supervisord.conf to include our additional configs and enable socket
 RUN echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "[include]" >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo "files = /etc/supervisor/conf.d/openconnect-services.conf" >> /etc/supervisor/conf.d/supervisord.conf
+    echo "files = /etc/supervisor/conf.d/openconnect-services.conf" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "[unix_http_server]" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "file=/var/run/supervisor.sock" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "[supervisorctl]" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "serverurl=unix:///var/run/supervisor.sock" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "[rpcinterface:supervisor]" >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo "supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface" >> /etc/supervisor/conf.d/supervisord.conf && \
+    # Also update the fallback config file for supervisorctl
+    sed -i 's|file=/run/supervisord.sock|file=/var/run/supervisor.sock|' /etc/supervisord.conf && \
+    sed -i 's|serverurl=unix:///run/supervisord.sock|serverurl=unix:///var/run/supervisor.sock|' /etc/supervisord.conf
 
 # Configure default Guacamole credentials (admin/admin)
 # This creates a default admin user in the user-mapping.xml template
