@@ -23,7 +23,7 @@ RUN rm -rf /var/lib/apt/lists/* /var/cache/apt && \
     && pip3 install --no-cache-dir flask
 
 # Create directories
-RUN mkdir -p /opt/openconnect /var/log/supervisor
+RUN mkdir -p /opt/openconnect /var/log/supervisor /root/.guacamole/extensions
 
 # Copy OpenConnect connection script
 COPY connect-vpn.sh /opt/openconnect/connect-vpn.sh
