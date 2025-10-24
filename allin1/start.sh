@@ -43,14 +43,8 @@ FLUSH PRIVILEGES;
 SQLEOF
 
     echo "  Loading schema..."
-    # Only load the initial schema files (001-create-schema.sql and 002-create-admin-user.sql)
-    # Skip all the upgrade-pre-*.sql files to avoid conflicts
-    find /opt/guacamole -name "001-*.sql" -o -name "002-*.sql" | sort | while read f; do
-        if [ -n "$f" ]; then
-            echo "    Loading $(basename $f)..."
-            mysql -u root guacamole < "$f" 2>&1 | grep -i error || true
-        fi
-    done
+    # Use Guacamole's official initdb.sh script to generate correct MySQL schema
+    /opt/guacamole/bin/initdb.sh --mysql | mysql -u root guacamole
 
     echo "  Creating admin user..."
     # Generate password hash using Guacamole's hash algorithm (SHA256)
