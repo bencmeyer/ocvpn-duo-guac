@@ -33,6 +33,10 @@ RUN chmod +x /opt/openconnect/web.py
 # Add supervisor config for OpenConnect services (complements the base image's config)
 COPY allin1/supervisord-openconnect.conf /etc/supervisor/conf.d/openconnect-services.conf
 
+# Copy Guacamole admin credential update script
+COPY update-guac-admin.sh /opt/update-guac-admin.sh
+RUN chmod +x /opt/update-guac-admin.sh
+
 # Modify base supervisord.conf to include our additional configs
 RUN echo "" >> /etc/supervisor/conf.d/supervisord.conf && \
     echo "[include]" >> /etc/supervisor/conf.d/supervisord.conf && \
