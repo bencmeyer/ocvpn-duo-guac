@@ -75,9 +75,10 @@ def get_vpn_settings():
     }
 
 def get_logs(lines=50):
-    """Get recent logs from supervisor output and error logs"""
+    """Get recent logs from supervisor output and error logs, formatted nicely"""
     try:
         all_lines = []
+        seen_lines = set()
         
         # Read stdout log
         stdout_log = f'{LOG_DIR}/openconnect-vpn.out.log'
@@ -97,10 +98,17 @@ def get_logs(lines=50):
             except:
                 pass
         
-        # Sort and return last N lines
-        if all_lines:
-            all_lines.sort()
-            return ''.join(all_lines[-lines:])
+        # Filter and deduplicate
+        unique_lines = []
+        for line in all_lines[-lines*2:]:  # Get more to filter duplicates
+            line = line.rstrip()
+            if line and line not in seen_lines and not line.startswith('=================='):
+                seen_lines.add(line)
+                unique_lines.append(line)
+        
+        # Return formatted logs (last N unique lines)
+        if unique_lines:
+            return '\n'.join(unique_lines[-lines:])
         else:
             return "No logs available yet. Start VPN connection to generate logs."
     except Exception as e:
@@ -220,7 +228,7 @@ def dashboard():
             .btn-reconnect { background: #007bff; color: white; }
             .btn-reconnect:hover { background: #0056b3; }
             .info { background: #e7f3ff; padding: 10px; margin: 10px 0; border-left: 4px solid #007bff; }
-            .logs { background: #f8f9fa; padding: 10px; border: 1px solid #dee2e6; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; }
+            .logs { background: #f8f9fa; padding: 10px; border: 1px solid #dee2e6; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; line-height: 1.4; }
             .settings { background: #fff3cd; padding: 10px; margin: 10px 0; border-left: 4px solid #ffc107; font-size: 13px; }
             .setting-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #e0e0e0; }
             .setting-row:last-child { border-bottom: none; }
@@ -317,12 +325,52 @@ def dashboard():
             }
 
             function connect() {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = 'Connecting...';
+                btn.disabled = true;
+                
                 fetch('/api/connect', { method: 'POST' })
                     .then(r => r.json())
                     .then(data => {
-                        alert(data.message || data.error);
-                        setTimeout(updateStatus, 2000);
+                        // Don't show alert, just poll for status
+                        if (!data.success) {
+                            console.error('VPN connection error:', data.error);
+                        }
+                        // Poll more frequently while connecting
+                        pollForConnection(btn, originalText);
+                    })
+                    .catch(err => {
+                        console.error('Connection request failed:', err);
+                        btn.textContent = originalText;
+                        btn.disabled = false;
                     });
+            }
+            
+            function pollForConnection(btn, originalText) {
+                let attempts = 0;
+                const maxAttempts = 60; // Try for up to 60 seconds
+                
+                const pollInterval = setInterval(() => {
+                    fetch('/api/status')
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.connected) {
+                                clearInterval(pollInterval);
+                                btn.textContent = originalText;
+                                btn.disabled = false;
+                                updateStatus(); // Update UI immediately
+                            } else {
+                                attempts++;
+                                if (attempts >= maxAttempts) {
+                                    clearInterval(pollInterval);
+                                    btn.textContent = originalText;
+                                    btn.disabled = false;
+                                    console.log('Connection timeout - check VPN credentials');
+                                }
+                            }
+                        });
+                }, 500); // Check every 500ms
             }
 
             function disconnect() {
@@ -373,7 +421,7 @@ def dashboard():
                 // Set Guacamole link to use the current host instead of localhost
                 const host = window.location.hostname;
                 const guacLink = document.getElementById('guac-link');
-                guacLink.href = `http://${host}:8080/`;
+                guacLink.href = `http://${host}:8080/guacamole/`;
             }
 
             // Update status every 5 seconds
